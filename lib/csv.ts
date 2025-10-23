@@ -1,67 +1,72 @@
-import { ParsedDataset } from "@/lib/data-access/lists";
+// Streaming CSV parser. Handles RFC4180-style CSV with quotes and escaped quotes.
+// Yields each parsed row as an array of strings without loading entire file in memory.
+export async function* parseCsvStream(
+  stream: ReadableStream<Uint8Array>
+): AsyncGenerator<string[]> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder("utf-8");
 
-export function parseCsv(content: string): string[][] {
-  const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const rows: string[][] = [];
-  let currentField = "";
-  let currentRow: string[] = [];
   let inQuotes = false;
+  let field = "";
+  let row: string[] = [];
+  let prevCR = false; // track "\r\n" windows line endings
 
-  for (let i = 0; i < normalized.length; i += 1) {
-    const char = normalized[i];
-    const nextChar = normalized[i + 1];
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
 
-    if (char === "\"" && inQuotes && nextChar === "\"") {
-      currentField += "\"";
-      i += 1;
-      continue;
+    const chunk = decoder.decode(value, { stream: true });
+    for (let i = 0; i < chunk.length; i += 1) {
+      const ch = chunk[i];
+      const next = chunk[i + 1];
+
+      // Handle escaped quotes inside quoted field
+      if (ch === '"' && inQuotes && next === '"') {
+        field += '"';
+        i += 1;
+        prevCR = false;
+        continue;
+      }
+
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+        prevCR = false;
+        continue;
+      }
+
+      if (ch === "," && !inQuotes) {
+        row.push(field);
+        field = "";
+        prevCR = false;
+        continue;
+      }
+
+      if ((ch === "\n" || ch === "\r") && !inQuotes) {
+        // Swallow the \n part of a \r\n sequence since we finalize row at \r already
+        if (ch === "\n" && prevCR) {
+          prevCR = false;
+          continue;
+        }
+        row.push(field);
+        field = "";
+        if (row.some((cell) => cell.trim().length > 0)) {
+          yield row;
+        }
+        row = [];
+        prevCR = ch === "\r";
+        continue;
+      }
+
+      prevCR = false;
+      field += ch;
     }
-
-    if (char === "\"") {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      currentRow.push(currentField);
-      currentField = "";
-      continue;
-    }
-
-    if (char === "\n" && !inQuotes) {
-      currentRow.push(currentField);
-      rows.push(currentRow);
-      currentField = "";
-      currentRow = [];
-      continue;
-    }
-
-    currentField += char;
   }
 
-  if (currentField.length > 0 || currentRow.length > 0) {
-    currentRow.push(currentField);
-    rows.push(currentRow);
+  // Flush last row
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    if (row.some((cell) => cell.trim().length > 0)) {
+      yield row;
+    }
   }
-
-  return rows.filter((row) => row.some((cell) => cell.trim().length > 0));
-}
-
-export function csvToDataset(csv: string): ParsedDataset {
-  const rows = parseCsv(csv);
-
-  if (!rows.length) {
-    throw new Error("CSV file must contain at least one row");
-  }
-
-  const [header, ...dataRows] = rows;
-
-  if (!header.length) {
-    throw new Error("CSV header row is empty");
-  }
-
-  return {
-    columns: header.map((column) => column.trim()),
-    rows: dataRows,
-  };
 }

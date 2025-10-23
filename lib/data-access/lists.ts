@@ -8,6 +8,90 @@ export interface ParsedDataset {
   rows: string[][];
 }
 
+export async function createListFromCsvStream(
+  name: string,
+  header: string[],
+  rows: AsyncIterable<string[]>,
+  options?: { batchSizeRows?: number; maxCellsPerInsert?: number }
+) {
+  if (!header.length) throw new Error("CSV header row is empty");
+
+  const batchSizeRows = options?.batchSizeRows ?? 250; // tune to stay under payload limits
+  const maxCellsPerInsert = options?.maxCellsPerInsert ?? 5000; // keep Neon payload safe
+
+  return db.transaction(async (tx) => {
+    const [insertedList] = await tx
+      .insert(lists)
+      .values({ name })
+      .returning({ id: lists.id });
+    if (!insertedList) throw new Error("Failed to create list");
+
+    const insertedColumns = await tx
+      .insert(listColumns)
+      .values(header.map((columnName, index) => ({
+        listId: insertedList.id,
+        name: columnName.trim(),
+        position: index,
+      })))
+      .returning({ id: listColumns.id, position: listColumns.position });
+
+    const buffer: string[][] = [];
+    let nextRowPosition = 0;
+
+    async function flushBuffer() {
+      if (buffer.length === 0) return;
+
+      const positions = Array.from({ length: buffer.length }, (_, i) => nextRowPosition + i);
+      const rowsToInsert = positions.map((pos) => ({ listId: insertedList.id, position: pos }));
+      const insertedRows = await tx
+        .insert(listRows)
+        .values(rowsToInsert)
+        .returning({ id: listRows.id, position: listRows.position });
+
+      // Build and insert cells in chunks to avoid oversized payloads
+      let cellBatch: { rowId: string; columnId: string; rawValue: string | null }[] = [];
+      const pushCell = async (cell: { rowId: string; columnId: string; rawValue: string | null }) => {
+        cellBatch.push(cell);
+        if (cellBatch.length >= maxCellsPerInsert) {
+          await tx.insert(listCells).values(cellBatch);
+          cellBatch = [];
+        }
+      };
+
+      for (const row of insertedRows) {
+        const sourceRow = buffer[row.position - nextRowPosition] ?? [];
+        for (const col of insertedColumns) {
+          const rawValue = sourceRow[col.position] ?? null;
+          await pushCell({ rowId: row.id, columnId: col.id, rawValue });
+        }
+      }
+
+      if (cellBatch.length) {
+        await tx.insert(listCells).values(cellBatch);
+      }
+
+      nextRowPosition += buffer.length;
+      buffer.length = 0;
+    }
+
+    for await (const row of rows) {
+      buffer.push(row);
+      if (buffer.length >= batchSizeRows) {
+        await flushBuffer();
+      }
+    }
+
+    await flushBuffer();
+
+    await tx
+      .update(lists)
+      .set({ updatedAt: sql`now()` })
+      .where(eq(lists.id, insertedList.id));
+
+    return insertedList.id;
+  });
+}
+
 export async function getLists() {
   const baseLists = await db
     .select({

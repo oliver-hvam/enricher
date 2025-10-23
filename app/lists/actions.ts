@@ -2,11 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 
-import {
-  createListWithDataset,
-  type ParsedDataset,
-} from "@/lib/data-access/lists";
-import { csvToDataset } from "@/lib/csv";
+import { createListFromCsvStream } from "@/lib/data-access/lists";
+import { parseCsvStream } from "@/lib/csv";
 import { UploadListState } from "./constants";
 
 export async function uploadListAction(
@@ -25,11 +22,14 @@ export async function uploadListAction(
       throw new Error("Only .csv files are supported");
     }
 
-    const dataset = await readDatasetFromFile(file);
-
     const derivedName = extractName(explicitName, file.name);
-
-    const listId = await createListWithDataset(derivedName, dataset);
+    const gen = parseCsvStream(file.stream());
+    const first = await gen.next();
+    if (first.done || !first.value || first.value.length === 0) {
+      throw new Error("CSV file must contain a header row");
+    }
+    const header = first.value.map((h) => h.trim());
+    const listId = await createListFromCsvStream(derivedName, header, gen);
 
     revalidatePath("/lists");
     revalidatePath(`/lists/${listId}`);
@@ -39,11 +39,6 @@ export async function uploadListAction(
     const message = error instanceof Error ? error.message : "Upload failed";
     return { status: "error", message };
   }
-}
-
-async function readDatasetFromFile(file: File): Promise<ParsedDataset> {
-  const text = await file.text();
-  return csvToDataset(text);
 }
 
 function extractName(
