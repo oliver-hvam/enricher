@@ -22,6 +22,7 @@ import {
 import { DataTableToolbar } from "@/app/lists/[listId]/_components/data-table-toolbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface ListDataRow {
   id: string;
@@ -70,6 +71,38 @@ export function ListDataTable({
   const scrollAreaRef = React.useRef<HTMLDivElement | null>(null);
   const sentinelNodeRef = React.useRef<HTMLDivElement | null>(null);
   const observerRef = React.useRef<IntersectionObserver | null>(null);
+
+  const [activeCell, setActiveCell] = React.useState<{
+    rowId: string;
+    columnId: string;
+  } | null>(null);
+
+  const columnWidthClassById = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const col of columns) {
+      const name = (col.name || "").toLowerCase();
+      let widthClass = "min-w-[320px] w-[320px] max-w-[320px]";
+      if (
+        name.includes("first name") ||
+        name.includes("last name") ||
+        name === "first" ||
+        name === "last"
+      ) {
+        widthClass = "min-w-[200px] w-[200px] max-w-[200px]";
+      } else if (
+        name.includes("email") ||
+        name.includes("company") ||
+        name.includes("address") ||
+        name.includes("notes") ||
+        name.includes("description") ||
+        name.includes("title")
+      ) {
+        widthClass = "min-w-[420px] w-[420px] max-w-[420px]";
+      }
+      map.set(col.id, widthClass);
+    }
+    return map;
+  }, [columns]);
 
   React.useEffect(() => {
     setRows(initialRows);
@@ -237,98 +270,142 @@ export function ListDataTable({
   const tableRows = table.getRowModel().rows;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 ">
       <DataTableToolbar table={table} />
-      <div className="rounded-lg border">
+      <div className="rounded-lg border ">
         <ScrollArea ref={scrollAreaRef} className="h-[70vh] w-full">
-          <div className="w-full">
-            <Table className="table-fixed">
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    <TableHead className="w-14 text-right">#</TableHead>
-                    {headerGroup.headers.map((header) => (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder ? null : (
-                          <button
-                            type="button"
-                            className="flex items-center gap-1 text-left font-semibold"
-                            onClick={header.column.getToggleSortingHandler()}
-                          >
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                            {renderSortIcon(header.column.getIsSorted())}
-                          </button>
-                        )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {tableRows.length ? (
-                  tableRows.map((row, rowIndex) => (
-                    <TableRow key={row.id} className="h-10">
+          <Table className="w-max min-w-full">
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  <TableHead className="sticky top-0 z-10 w-14 bg-background text-right">
+                    #
+                  </TableHead>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        "sticky top-0 z-10 bg-background",
+                        columnWidthClassById.get(header.column.id)
+                      )}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 text-left font-semibold"
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                          {renderSortIcon(header.column.getIsSorted())}
+                        </button>
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {tableRows.length ? (
+                tableRows.map((row, rowIndex) => {
+                  const isRowExpanded =
+                    activeCell !== null && activeCell.rowId === row.id;
+                  return (
+                    <TableRow
+                      key={row.id}
+                      className={cn(!isRowExpanded && "h-10")}
+                    >
                       <TableCell className="w-14 select-none text-right text-muted-foreground">
                         {rowIndex + 1}
                       </TableCell>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className="max-w-0">
-                          <div className="truncate whitespace-nowrap">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
+                      {row.getVisibleCells().map((cell) => {
+                        const isActive =
+                          activeCell !== null &&
+                          activeCell.rowId === row.id &&
+                          activeCell.columnId === cell.column.id;
+                        const rawValue = (cell.getValue<string>() ||
+                          "") as string;
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={cn(
+                              "cursor-pointer align-top",
+                              columnWidthClassById.get(cell.column.id)
                             )}
-                          </div>
-                        </TableCell>
-                      ))}
+                            onClick={() =>
+                              setActiveCell((prev) => {
+                                if (
+                                  prev &&
+                                  prev.rowId === row.id &&
+                                  prev.columnId === cell.column.id
+                                ) {
+                                  return null;
+                                }
+                                return {
+                                  rowId: row.id,
+                                  columnId: cell.column.id,
+                                };
+                              })
+                            }
+                          >
+                            {isActive ? (
+                              <div className="rounded-md ring-2 ring-primary">
+                                <ExpandedReadOnlyTextArea value={rawValue} />
+                              </div>
+                            ) : (
+                              <div className="truncate whitespace-nowrap">
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={Math.max(columns.length + 1, 1)}
-                      className="h-24 text-center"
-                    >
-                      No results.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={Math.max(columns.length + 1, 1)}
-                      className="h-16 text-center text-sm text-muted-foreground"
-                    >
-                      Loading more rows...
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-                {loadError ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={Math.max(columns.length + 1, 1)}
-                      className="h-16 text-center text-sm text-muted-foreground"
-                    >
-                      <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-                        <span>{loadError}</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleRetry}
-                        >
-                          Retry
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-            <div ref={setSentinelNode} className="h-4 w-full" />
-          </div>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={Math.max(columns.length + 1, 1)}
+                    className="h-24 text-center"
+                  >
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )}
+              {isLoading ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={Math.max(columns.length + 1, 1)}
+                    className="h-16 text-center text-sm text-muted-foreground"
+                  >
+                    Loading more rows...
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              {loadError ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={Math.max(columns.length + 1, 1)}
+                    className="h-16 text-center text-sm text-muted-foreground"
+                  >
+                    <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+                      <span>{loadError}</span>
+                      <Button variant="outline" size="sm" onClick={handleRetry}>
+                        Retry
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+          <div ref={setSentinelNode} className="h-4 w-full" />
         </ScrollArea>
       </div>
       <div className="flex items-center justify-center">
@@ -353,4 +430,27 @@ function renderSortIcon(sortState: false | "asc" | "desc") {
     return <span aria-hidden="true">↓</span>;
   }
   return null;
+}
+
+function ExpandedReadOnlyTextArea({ value }: { value: string }) {
+  const textAreaRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  React.useLayoutEffect(() => {
+    const el = textAreaRef.current;
+    if (!el) {
+      return;
+    }
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textAreaRef}
+      readOnly
+      value={value}
+      rows={1}
+      className="block w-full resize-none overflow-hidden whitespace-pre-wrap wrap-break-word rounded-md border border-primary/60 bg-background px-2 py-1 text-sm focus:outline-none"
+    />
+  );
 }
