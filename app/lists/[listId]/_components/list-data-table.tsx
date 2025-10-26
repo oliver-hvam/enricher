@@ -20,9 +20,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTableToolbar } from "@/app/lists/[listId]/_components/data-table-toolbar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export interface ListDataRow {
   id: string;
