@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 
-import { addColumnToList } from "@/lib/data-access/lists";
 import { AddColumnState } from "./constants";
 
 export async function addColumnAction(
@@ -16,8 +15,6 @@ export async function addColumnAction(
     if (typeof columnName !== "string" || columnName.trim().length === 0) {
       throw new Error("Column name is required");
     }
-
-    await addColumnToList(listId, columnName.trim());
 
     revalidatePath(`/lists/${listId}`);
 

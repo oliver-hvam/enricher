@@ -56,7 +56,7 @@ export function AddListDialog({
       fd.append("file", file);
       fd.append("name", name.trim());
 
-      const res = await fetch("/lists/import", {
+      const res = await fetch("/api/lists", {
         method: "POST",
         body: fd,
       });

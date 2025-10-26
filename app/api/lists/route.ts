@@ -5,6 +5,7 @@ import { parse } from "csv-parse";
 import {
   createDataset,
   datasetExistsByName,
+  getAllDatasets,
   insertColumns,
   insertRowsBatch,
   type JsonRow,
@@ -13,6 +14,20 @@ import { ReadableStream } from "stream/web";
 import { Readable } from "stream";
 
 const BATCH_SIZE = 1000;
+
+export async function GET() {
+  try {
+    const datasets = await getAllDatasets();
+    return NextResponse.json(datasets, { status: 200 });
+  } catch (err: unknown) {
+    let message = "Failed to fetch datasets";
+
+    if (err instanceof Error) {
+      message = err.message;
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,6 +60,7 @@ export async function POST(req: NextRequest) {
       bom: true,
       skip_empty_lines: true,
       relax_column_count: true,
+      delimiter: [";", "\t"], // Auto-detect delimiter
     });
 
     const stream = readable.pipe(parser);
@@ -61,6 +77,8 @@ export async function POST(req: NextRequest) {
     for await (const record of stream) {
       if (!columnsInserted) {
         header = Object.keys(record);
+        console.log("Header array:", header);
+        console.log("Header length:", header.length);
         if (header.length === 0) {
           return NextResponse.json(
             { error: "CSV needs a header row" },
@@ -85,7 +103,7 @@ export async function POST(req: NextRequest) {
     }
     await flush(); // Buffer remainder
 
-    return NextResponse.json({ datasetId }, { status: 200 });
+    return NextResponse.json({ listId: datasetId }, { status: 200 });
   } catch (err: unknown) {
     let message = "Import failed";
 

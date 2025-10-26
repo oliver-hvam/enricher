@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { datasetRows, datasets, listColumns } from "@/db/schema";
@@ -45,6 +45,152 @@ export async function insertRowsBatch(
 ): Promise<void> {
   if (rows.length === 0) return;
   await db.insert(datasetRows).values(rows.map((row) => ({ datasetId, row })));
+}
+
+export async function getAllDatasets() {
+  const baseDatasets = await db
+    .select({
+      id: datasets.id,
+      name: datasets.name,
+      createdAt: datasets.createdAt,
+      updatedAt: datasets.updatedAt,
+    })
+    .from(datasets)
+    .orderBy(desc(datasets.createdAt));
+
+  if (!baseDatasets.length) {
+    return [];
+  }
+
+  const datasetIds = baseDatasets.map((dataset) => dataset.id);
+
+  const [columnCounts, rowCounts] = await Promise.all([
+    db
+      .select({
+        datasetId: listColumns.dataset_id,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(listColumns)
+      .where(inArray(listColumns.dataset_id, datasetIds))
+      .groupBy(listColumns.dataset_id),
+    db
+      .select({
+        datasetId: datasetRows.datasetId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(datasetRows)
+      .where(inArray(datasetRows.datasetId, datasetIds))
+      .groupBy(datasetRows.datasetId),
+  ]);
+
+  const columnCountMap = new Map(
+    columnCounts.map((entry) => [entry.datasetId, entry.count])
+  );
+  const rowCountMap = new Map(
+    rowCounts.map((entry) => [entry.datasetId, entry.count])
+  );
+
+  return baseDatasets.map((dataset) => ({
+    id: dataset.id,
+    name: dataset.name,
+    createdAt: dataset.createdAt,
+    updatedAt: dataset.updatedAt,
+    columnCount: columnCountMap.get(dataset.id) ?? 0,
+    rowCount: rowCountMap.get(dataset.id) ?? 0,
+  }));
+}
+
+export async function getDatasetById(datasetId: string) {
+  const dataset = await db.query.datasets.findFirst({
+    where: eq(datasets.id, datasetId),
+  });
+
+  if (!dataset) {
+    return null;
+  }
+
+  const columns = await db
+    .select({
+      id: listColumns.id,
+      name: listColumns.name,
+      position: listColumns.position,
+      metadata: listColumns.metadata,
+      createdAt: listColumns.createdAt,
+    })
+    .from(listColumns)
+    .where(eq(listColumns.dataset_id, datasetId))
+    .orderBy(listColumns.position);
+
+  return {
+    id: dataset.id,
+    name: dataset.name,
+    createdAt: dataset.createdAt,
+    updatedAt: dataset.updatedAt,
+    columns,
+  };
+}
+
+export async function getDatasetRowCount(datasetId: string) {
+  const [result] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(datasetRows)
+    .where(eq(datasetRows.datasetId, datasetId));
+
+  return result?.count ?? 0;
+}
+
+interface GetDatasetRowsOptions {
+  limit?: number;
+  offset?: number;
+}
+
+export async function getDatasetRows(
+  datasetId: string,
+  options?: GetDatasetRowsOptions
+) {
+  let query = db
+    .select({
+      id: datasetRows.id,
+      row: datasetRows.row,
+      createdAt: datasetRows.createdAt,
+    })
+    .from(datasetRows)
+    .where(eq(datasetRows.datasetId, datasetId))
+    .$dynamic();
+
+  if (options?.limit !== undefined) {
+    query = query.limit(options.limit);
+  }
+
+  if (options?.offset !== undefined) {
+    query = query.offset(options.offset);
+  }
+
+  return await query;
+}
+
+export async function getDatasetWithRows(
+  datasetId: string,
+  options?: GetDatasetRowsOptions
+) {
+  const dataset = await getDatasetById(datasetId);
+
+  if (!dataset) {
+    return null;
+  }
+
+  const [rowCount, rows] = await Promise.all([
+    getDatasetRowCount(datasetId),
+    getDatasetRows(datasetId, options),
+  ]);
+
+  return {
+    ...dataset,
+    rows,
+    rowCount,
+  };
 }
 
 /*

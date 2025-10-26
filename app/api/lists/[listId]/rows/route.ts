@@ -1,57 +1,68 @@
-import { NextRequest, NextResponse } from "next/server";
-
-import { getListRows, getListRowsAfterPosition } from "@/lib/data-access/lists";
-
-const DEFAULT_PAGE_SIZE = 50;
-const MAX_PAGE_SIZE = 200;
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 export const runtime = "nodejs";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ listId: string }> }
-) {
-  const { listId } = await params;
-  const searchParams = request.nextUrl.searchParams;
+import { NextRequest, NextResponse } from "next/server";
+import { getDatasetById, getDatasetRows } from "@/lib/data-access/lists";
 
-  const limitParam = searchParams.get("limit");
-  const offsetParam = searchParams.get("offset");
-  const cursorParam = searchParams.get("cursor");
+interface RouteContext {
+  params: Promise<{
+    listId: string;
+  }>;
+}
 
-  const limit = limitParam ? Number(limitParam) : DEFAULT_PAGE_SIZE;
-  const offset = offsetParam ? Number(offsetParam) : 0;
-  const cursor = cursorParam ? Number(cursorParam) : undefined;
+export async function GET(req: NextRequest, context: RouteContext) {
+  try {
+    const { listId } = await context.params;
+    const { searchParams } = new URL(req.url);
 
-  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_SIZE) {
-    return NextResponse.json(
-      { error: "Invalid limit parameter." },
-      { status: 400 }
+    const cursor = searchParams.get("cursor");
+    const limit = searchParams.get("limit");
+
+    const pageSize = limit ? parseInt(limit, 10) : 50;
+    // Since our schema doesn't have position, we'll use offset based on cursor
+    // Cursor will represent the number of rows already loaded
+    const offset = cursor ? parseInt(cursor, 10) + 1 : 0;
+
+    const dataset = await getDatasetById(listId);
+
+    if (!dataset) {
+      return NextResponse.json({ error: "Dataset not found" }, { status: 404 });
+    }
+
+    // Create a map from column name to column ID
+    const columnNameToId = new Map(
+      dataset.columns.map((col) => [col.name, col.id])
     );
+
+    const dbRows = await getDatasetRows(listId, {
+      limit: pageSize,
+      offset,
+    });
+
+    // Transform rows: convert from column-name-keyed to column-id-keyed
+    const rows = dbRows.map((row, index) => {
+      const values: Record<string, string | null> = {};
+
+      for (const [columnName, value] of Object.entries(row.row)) {
+        const columnId = columnNameToId.get(columnName);
+        if (columnId) {
+          values[columnId] = value as string | null;
+        }
+      }
+
+      return {
+        id: row.id,
+        values,
+        position: offset + index, // Generate position based on offset
+      };
+    });
+
+    return NextResponse.json({ rows }, { status: 200 });
+  } catch (err: unknown) {
+    let message = "Failed to fetch rows";
+
+    if (err instanceof Error) {
+      message = err.message;
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  if (offsetParam && (!Number.isInteger(offset) || offset < 0)) {
-    return NextResponse.json(
-      { error: "Invalid offset parameter." },
-      { status: 400 }
-    );
-  }
-
-  if (cursorParam && (!Number.isInteger(cursor) || cursor! < -1)) {
-    return NextResponse.json(
-      { error: "Invalid cursor parameter." },
-      { status: 400 }
-    );
-  }
-
-  const rows =
-    cursor !== undefined
-      ? await getListRowsAfterPosition(listId, cursor, { limit })
-      : await getListRows(listId, { limit, offset });
-
-  return NextResponse.json(
-    { rows },
-    { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
-  );
 }
