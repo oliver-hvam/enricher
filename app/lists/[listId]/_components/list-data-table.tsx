@@ -290,14 +290,14 @@ export function ListDataTable({
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   <TableHead
-                    className="sticky top-0 z-10 w-14 bg-background text-right"
+                    className="sticky top-0 z-10 w-14 bg-neutral-100 text-right rounded-tl-lg"
                     style={{ borderRight: "1px solid hsl(var(--border))" }}
                   ></TableHead>
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
                       className={cn(
-                        "sticky top-0 z-10 bg-background",
+                        "sticky top-0 z-10 bg-neutral-100 border-r border-border last:border-r-0 last:rounded-tr-lg",
                         header.column.getIsResizing() &&
                           "border-r-2 border-primary"
                       )}
@@ -305,7 +305,6 @@ export function ListDataTable({
                         width: header.getSize(),
                         minWidth: header.column.columnDef.minSize,
                         maxWidth: header.column.columnDef.maxSize,
-                        borderRight: "1px solid hsl(var(--border))",
                         position: "sticky",
                       }}
                     >
