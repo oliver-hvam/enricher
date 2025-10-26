@@ -290,7 +290,7 @@ export function ListDataTable({
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   <TableHead
-                    className="sticky top-0 z-10 w-14 bg-neutral-100 text-right rounded-tl-lg"
+                    className="sticky top-0 z-10 w-14 bg-neutral-100 text-center rounded-tl-lg"
                     style={{ borderRight: "1px solid hsl(var(--border))" }}
                   ></TableHead>
                   {headerGroup.headers.map((header) => (
@@ -351,7 +351,7 @@ export function ListDataTable({
                       className={cn(!isRowExpanded && "h-10")}
                     >
                       <TableCell
-                        className="w-14 select-none text-right text-muted-foreground"
+                        className="w-14 select-none text-center font-medium text-neutral-500"
                         style={{ borderRight: "1px solid hsl(var(--border))" }}
                       >
                         {rowIndex + 1}
