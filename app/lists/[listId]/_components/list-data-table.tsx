@@ -264,6 +264,7 @@ export function ListDataTable({
     onColumnSizingChange: setColumnSizing,
     columnResizeMode: "onChange" as ColumnResizeMode,
     enableColumnResizing: true,
+    enableColumnSizing: true,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -285,7 +286,10 @@ export function ListDataTable({
       <DataTableToolbar table={table} />
       <div className="rounded-lg border ">
         <ScrollArea ref={scrollAreaRef} className="h-[70vh] w-full">
-          <Table className="w-max min-w-full" style={{ tableLayout: "fixed" }}>
+          <Table
+            className="w-full"
+            style={{ tableLayout: "fixed", width: "100%" }}
+          >
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -366,7 +370,7 @@ export function ListDataTable({
                         return (
                           <TableCell
                             key={cell.id}
-                            className="cursor-pointer align-top"
+                            className="cursor-pointer align-top overflow-hidden"
                             style={{
                               width: cell.column.getSize(),
                               minWidth: cell.column.columnDef.minSize,
@@ -394,7 +398,10 @@ export function ListDataTable({
                                 <ExpandedReadOnlyTextArea value={rawValue} />
                               </div>
                             ) : (
-                              <div className="truncate whitespace-nowrap">
+                              <div
+                                className="truncate whitespace-nowrap overflow-hidden text-ellipsis"
+                                style={{ maxWidth: "100%" }}
+                              >
                                 {flexRender(
                                   cell.column.columnDef.cell,
                                   cell.getContext()
