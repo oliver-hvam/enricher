@@ -130,6 +130,15 @@ export async function getDatasetById(datasetId: string) {
   };
 }
 
+export async function deleteDataset(datasetId: string): Promise<boolean> {
+  const result = await db
+    .delete(datasets)
+    .where(eq(datasets.id, datasetId))
+    .returning({ id: datasets.id });
+
+  return result.length > 0;
+}
+
 export async function getDatasetRowCount(datasetId: string) {
   const [result] = await db
     .select({

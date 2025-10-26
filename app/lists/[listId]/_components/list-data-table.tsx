@@ -228,7 +228,10 @@ export function ListDataTable({
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  <TableHead className="sticky top-0 z-10 w-10 bg-neutral-100 text-center rounded-tl-lg" />
+                  <TableHead
+                    className="sticky top-0 z-10 w-10 max-w-10 bg-neutral-100 text-center rounded-tl-lg"
+                    style={{ borderRight: "1px solid hsl(var(--border))" }}
+                  ></TableHead>
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
@@ -256,21 +259,73 @@ export function ListDataTable({
             </TableHeader>
             <TableBody>
               {tableRows.length ? (
-                tableRows.map((row, rowIndex) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="w-10 text-center text-neutral-400">
-                      {rowIndex + 1}
-                    </TableCell>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                tableRows.map((row, rowIndex) => {
+                  const isLastRow = rowIndex === tableRows.length - 1;
+                  return (
+                    <TableRow key={row.id} className="h-10">
+                      <TableCell
+                        className="w-10 max-w-10 select-none text-center text-neutral-400"
+                        style={{
+                          borderRight: "1px solid hsl(var(--border))",
+                          borderBottom: isLastRow
+                            ? "1px solid hsl(var(--border))"
+                            : undefined,
+                        }}
+                      >
+                        {rowIndex + 1}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+                      {row.getVisibleCells().map((cell) => {
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className="cursor-pointer align-top overflow-hidden"
+                            style={{
+                              width: cell.column.getSize(),
+                              minWidth: cell.column.columnDef.minSize,
+                              maxWidth: cell.column.columnDef.maxSize,
+                              borderRight: "1px solid hsl(var(--border))",
+                              borderBottom: isLastRow
+                                ? "1px solid hsl(var(--border))"
+                                : undefined,
+                            }}
+                            onClick={(e) => {
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              setActiveCell((prev) => {
+                                if (
+                                  prev &&
+                                  prev.rowId === row.id &&
+                                  prev.columnId === cell.column.id
+                                ) {
+                                  setCellPosition(null);
+                                  return null;
+                                }
+                                setCellPosition({
+                                  top: rect.top,
+                                  left: rect.left,
+                                });
+                                return {
+                                  rowId: row.id,
+                                  columnId: cell.column.id,
+                                };
+                              });
+                            }}
+                          >
+                            <div
+                              className="truncate whitespace-nowrap overflow-hidden text-ellipsis"
+                              style={{ maxWidth: "100%" }}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </div>
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell
