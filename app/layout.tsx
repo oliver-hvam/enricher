@@ -24,7 +24,7 @@ export default function RootLayout({
         <div className="flex min-h-screen bg-background text-foreground">
           <Sidebar />
           <div className="flex flex-1 flex-col">
-            <header className="flex items-center justify-between border-b px-8 py-6">
+            <header className="flex items-center justify-between border-b px-8 py-4">
               <div className="flex flex-col">
                 <span className="text-lg font-semibold">Workspace</span>
                 <span className="text-sm text-muted-foreground">
