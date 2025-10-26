@@ -1,59 +1,18 @@
 import { ListDetailHeader } from "@/app/lists/[listId]/_components/list-detail-header";
-import {
-  ListDataTable,
-  ListDataColumn,
-  ListDataRow,
-} from "@/app/lists/[listId]/_components/list-data-table";
-import { getDatasetWithRows } from "@/lib/data-access/lists";
+import { ListDataTable } from "@/app/lists/[listId]/_components/list-data-table";
 import { notFound } from "next/navigation";
+import { getDatasetWithColumnsOnly } from "@/lib/data-access/lists";
 
 interface ListPageProps {
-  params: Promise<{
-    listId: string;
-  }>;
+  params: Promise<{ listId: string }>;
 }
 
 export default async function ListDetailPage({ params }: ListPageProps) {
-  const PAGE_SIZE = 50;
   const { listId } = await params;
 
-  const dataset = await getDatasetWithRows(listId, {
-    limit: PAGE_SIZE,
-    offset: 0,
-  });
+  const dataset = await getDatasetWithColumnsOnly(listId);
 
-  if (!dataset) {
-    notFound();
-  }
-
-  // Create a map from column name to column ID
-  const columnNameToId = new Map(
-    dataset.columns.map((col) => [col.name, col.id])
-  );
-
-  // Transform columns to the format expected by ListDataTable
-  const columns: ListDataColumn[] = dataset.columns.map((col) => ({
-    id: col.id,
-    name: col.name,
-  }));
-
-  // Transform rows: convert from column-name-keyed to column-id-keyed
-  const rows: ListDataRow[] = dataset.rows.map((row, index) => {
-    const values: Record<string, string | null> = {};
-
-    for (const [columnName, value] of Object.entries(row.row)) {
-      const columnId = columnNameToId.get(columnName);
-      if (columnId) {
-        values[columnId] = value as string | null;
-      }
-    }
-
-    return {
-      id: row.id,
-      values,
-      position: index, // Use index as position since we don't have it in schema
-    };
-  });
+  if (!dataset) notFound();
 
   return (
     <div className="space-y-8">
@@ -64,11 +23,11 @@ export default async function ListDetailPage({ params }: ListPageProps) {
         columnCount={dataset.columns.length}
         updatedAt={dataset.updatedAt}
       />
+      {/* ⬇ Client handles fetching rows */}
       <ListDataTable
         listId={dataset.id}
-        columns={columns}
-        initialRows={rows}
-        pageSize={PAGE_SIZE}
+        columns={dataset.columns.map((c) => ({ id: c.id, name: c.name }))}
+        pageSize={50}
       />
     </div>
   );
