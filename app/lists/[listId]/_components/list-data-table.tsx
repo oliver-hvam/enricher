@@ -121,7 +121,9 @@ export function ListDataTable({
       name.includes("first name") ||
       name.includes("last name") ||
       name === "first" ||
-      name === "last"
+      name === "last" ||
+      name == "full name" ||
+      "fullname"
     ) {
       return 150;
     } else if (
@@ -313,14 +315,11 @@ export function ListDataTable({
   const tableRows = table.getRowModel().rows;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-green-300 max-w-full w-full p-4 ">
       <DataTableToolbar table={table} />
-      <div className="rounded-lg border ">
-        <ScrollArea ref={scrollAreaRef} className="h-[70vh] w-full">
-          <Table
-            className="w-full"
-            style={{ tableLayout: "fixed", width: "100%" }}
-          >
+      <div className="rounded-lg border overflow-x-scroll">
+        <ScrollArea ref={scrollAreaRef} className="h-[70vh] bg-purple-300">
+          <Table className="bg-amber-200 p-3" style={{ tableLayout: "fixed" }}>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
