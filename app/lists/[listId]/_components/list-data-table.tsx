@@ -91,7 +91,7 @@ export function ListDataTable({
       name === "first" ||
       name === "last"
     ) {
-      return 200;
+      return 150;
     } else if (
       name.includes("email") ||
       name.includes("company") ||
@@ -100,9 +100,9 @@ export function ListDataTable({
       name.includes("description") ||
       name.includes("title")
     ) {
-      return 420;
+      return 200;
     }
-    return 320;
+    return 250;
   }, []);
 
   React.useEffect(() => {
