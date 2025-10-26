@@ -75,6 +75,13 @@ export async function createListFromCsvStream(
           position: index,
         }))
       )
+      .values(
+        header.map((columnName, index) => ({
+          listId: insertedList.id,
+          name: columnName.trim(),
+          position: index,
+        }))
+      )
       .returning({ id: listColumns.id, position: listColumns.position });
 
     const buffer: string[][] = [];
@@ -91,12 +98,30 @@ export async function createListFromCsvStream(
         listId: insertedList.id,
         position: pos,
       }));
+      const positions = Array.from(
+        { length: buffer.length },
+        (_, i) => nextRowPosition + i
+      );
+      const rowsToInsert = positions.map((pos) => ({
+        listId: insertedList.id,
+        position: pos,
+      }));
       const insertedRows = await tx
         .insert(listRows)
         .values(rowsToInsert)
         .returning({ id: listRows.id, position: listRows.position });
 
       // Build and insert cells in chunks to avoid oversized payloads
+      let cellBatch: {
+        rowId: string;
+        columnId: string;
+        rawValue: string | null;
+      }[] = [];
+      const pushCell = async (cell: {
+        rowId: string;
+        columnId: string;
+        rawValue: string | null;
+      }) => {
       let cellBatch: {
         rowId: string;
         columnId: string;
@@ -272,18 +297,155 @@ export async function createListWithDataset(
   });
 }
 
-export async function getListWithData(listId: string) {
+export async function getListRowCount(listId: string) {
+  const [result] = await db
+    .select({
+      count: sql<number>`count(*)::int`,
+    })
+    .from(listRows)
+    .where(eq(listRows.listId, listId));
+
+  return result?.count ?? 0;
+}
+
+interface GetListRowsOptions {
+  limit?: number;
+  offset?: number;
+}
+
+export async function getListRows(
+  listId: string,
+  options?: GetListRowsOptions
+) {
+  // Fetch rows page explicitly using limit/offset with clear branches to satisfy types
+  let baseRows: { id: string; position: number }[];
+  if (options?.limit !== undefined && options?.offset !== undefined) {
+    baseRows = await db
+      .select({ id: listRows.id, position: listRows.position })
+      .from(listRows)
+      .where(eq(listRows.listId, listId))
+      .orderBy(asc(listRows.position))
+      .limit(options.limit)
+      .offset(options.offset);
+  } else if (options?.limit !== undefined) {
+    baseRows = await db
+      .select({ id: listRows.id, position: listRows.position })
+      .from(listRows)
+      .where(eq(listRows.listId, listId))
+      .orderBy(asc(listRows.position))
+      .limit(options.limit);
+  } else if (options?.offset !== undefined) {
+    baseRows = await db
+      .select({ id: listRows.id, position: listRows.position })
+      .from(listRows)
+      .where(eq(listRows.listId, listId))
+      .orderBy(asc(listRows.position))
+      .offset(options.offset);
+  } else {
+    baseRows = await db
+      .select({ id: listRows.id, position: listRows.position })
+      .from(listRows)
+      .where(eq(listRows.listId, listId))
+      .orderBy(asc(listRows.position));
+  }
+
+  if (baseRows.length === 0) {
+    return [] as Array<{
+      id: string;
+      position: number;
+      values: Record<string, string | null>;
+    }>;
+  }
+
+  const rowIds = baseRows.map((r) => r.id);
+
+  const cells = await db
+    .select({
+      rowId: listCells.rowId,
+      columnId: listCells.columnId,
+      rawValue: listCells.rawValue,
+    })
+    .from(listCells)
+    .where(inArray(listCells.rowId, rowIds));
+
+  const rowIdToValues = new Map<string, Record<string, string | null>>();
+  for (const row of baseRows) {
+    rowIdToValues.set(row.id, {});
+  }
+  for (const cell of cells) {
+    const values = rowIdToValues.get(cell.rowId);
+    if (values) {
+      values[cell.columnId] = cell.rawValue ?? null;
+    }
+  }
+
+  return baseRows.map((row) => ({
+    id: row.id,
+    position: row.position,
+    values: rowIdToValues.get(row.id) ?? {},
+  }));
+}
+
+export async function getListRowsAfterPosition(
+  listId: string,
+  cursorPosition: number,
+  options?: { limit?: number }
+) {
+  const baseRows = await db
+    .select({ id: listRows.id, position: listRows.position })
+    .from(listRows)
+    .where(
+      and(eq(listRows.listId, listId), gt(listRows.position, cursorPosition))
+    )
+    .orderBy(asc(listRows.position))
+    .limit(options?.limit ?? 50);
+
+  if (baseRows.length === 0) {
+    return [] as Array<{
+      id: string;
+      position: number;
+      values: Record<string, string | null>;
+    }>;
+  }
+
+  const rowIds = baseRows.map((r) => r.id);
+
+  const cells = await db
+    .select({
+      rowId: listCells.rowId,
+      columnId: listCells.columnId,
+      rawValue: listCells.rawValue,
+    })
+    .from(listCells)
+    .where(inArray(listCells.rowId, rowIds));
+
+  const rowIdToValues = new Map<string, Record<string, string | null>>();
+  for (const row of baseRows) {
+    rowIdToValues.set(row.id, {});
+  }
+  for (const cell of cells) {
+    const values = rowIdToValues.get(cell.rowId);
+    if (values) {
+      values[cell.columnId] = cell.rawValue ?? null;
+    }
+  }
+
+  return baseRows.map((row) => ({
+    id: row.id,
+    position: row.position,
+    values: rowIdToValues.get(row.id) ?? {},
+  }));
+}
+
+export async function getListWithData(
+  listId: string,
+  options?: GetListRowsOptions
+) {
   const list = await db.query.lists.findFirst({
     where: eq(lists.id, listId),
     with: {
       columns: {
         orderBy: (table, { asc }) => asc(table.position),
-      },
-      rows: {
-        orderBy: (table, { asc }) => asc(table.position),
-        with: {
-          cells: true,
-        },
       },
     },
   });
@@ -292,22 +454,19 @@ export async function getListWithData(listId: string) {
     return null;
   }
 
-  const columns = list.columns;
-  const rows = list.rows.map((row) => ({
-    id: row.id,
-    position: row.position,
-    values: Object.fromEntries(
-      row.cells.map((cell) => [cell.columnId, cell.rawValue])
-    ),
-  }));
+  const [rowCount, rows] = await Promise.all([
+    getListRowCount(listId),
+    getListRows(listId, options),
+  ]);
 
   return {
     id: list.id,
     name: list.name,
     createdAt: list.createdAt,
     updatedAt: list.updatedAt,
-    columns,
+    columns: list.columns,
     rows,
+    rowCount,
   };
 }
 

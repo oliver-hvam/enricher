@@ -11,9 +11,10 @@ interface ListPageProps {
 }
 
 export default async function ListDetailPage({ params }: ListPageProps) {
+  const PAGE_SIZE = 50;
   const { listId } = await params;
 
-  const list = await getListWithData(listId);
+  const list = await getListWithData(listId, { limit: PAGE_SIZE, offset: 0 });
 
   if (!list) {
     notFound();
@@ -26,6 +27,7 @@ export default async function ListDetailPage({ params }: ListPageProps) {
 
   const rows = list.rows.map((row) => ({
     id: row.id,
+    position: row.position,
     values: row.values,
   }));
 
@@ -34,11 +36,16 @@ export default async function ListDetailPage({ params }: ListPageProps) {
       <ListDetailHeader
         listId={list.id}
         name={list.name}
-        rowCount={list.rows.length}
+        rowCount={list.rowCount}
         columnCount={list.columns.length}
         updatedAt={list.updatedAt}
       />
-      <ListDataTable columns={columns} rows={rows} />
+      <ListDataTable
+        listId={list.id}
+        columns={columns}
+        initialRows={rows}
+        pageSize={PAGE_SIZE}
+      />
     </div>
   );
 }

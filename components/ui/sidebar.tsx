@@ -6,8 +6,8 @@ import { ListTree } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "./scroll-area";
 
 const navigation = [
   {
@@ -27,7 +27,9 @@ export function Sidebar() {
           <span className="text-lg font-bold">EN</span>
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-foreground">Enricher</span>
+          <span className="text-sm font-semibold text-foreground">
+            Enricher
+          </span>
           <span className="text-xs text-muted-foreground">Data workspace</span>
         </div>
       </div>
