@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   ColumnDef,
+  ColumnResizeMode,
   SortingState,
   flexRender,
   getCoreRowModel,
@@ -61,6 +62,11 @@ export function ListDataTable({
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
+  // Column sizing state
+  const [columnSizing, setColumnSizing] = React.useState<
+    Record<string, number>
+  >({});
+
   const hasMoreRef = React.useRef(initialRows.length === pageSize);
   const lastPositionRef = React.useRef<number>(
     initialRows.length
@@ -77,32 +83,27 @@ export function ListDataTable({
     columnId: string;
   } | null>(null);
 
-  const columnWidthClassById = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const col of columns) {
-      const name = (col.name || "").toLowerCase();
-      let widthClass = "min-w-[320px] w-[320px] max-w-[320px]";
-      if (
-        name.includes("first name") ||
-        name.includes("last name") ||
-        name === "first" ||
-        name === "last"
-      ) {
-        widthClass = "min-w-[200px] w-[200px] max-w-[200px]";
-      } else if (
-        name.includes("email") ||
-        name.includes("company") ||
-        name.includes("address") ||
-        name.includes("notes") ||
-        name.includes("description") ||
-        name.includes("title")
-      ) {
-        widthClass = "min-w-[420px] w-[420px] max-w-[420px]";
-      }
-      map.set(col.id, widthClass);
+  const getDefaultColumnWidth = React.useCallback((columnName: string) => {
+    const name = (columnName || "").toLowerCase();
+    if (
+      name.includes("first name") ||
+      name.includes("last name") ||
+      name === "first" ||
+      name === "last"
+    ) {
+      return 200;
+    } else if (
+      name.includes("email") ||
+      name.includes("company") ||
+      name.includes("address") ||
+      name.includes("notes") ||
+      name.includes("description") ||
+      name.includes("title")
+    ) {
+      return 420;
     }
-    return map;
-  }, [columns]);
+    return 320;
+  }, []);
 
   React.useEffect(() => {
     setRows(initialRows);
@@ -228,20 +229,26 @@ export function ListDataTable({
 
   const columnDefs = React.useMemo<ColumnDef<ListDataRow>[]>(
     () =>
-      columns.map((column) => ({
-        id: column.id,
-        accessorFn: (row) => row.values[column.id] ?? "",
-        header: column.name,
-        enableSorting: true,
-        cell: ({ getValue }) => {
-          const value = getValue<string>();
-          if (value === null || value === undefined || value.length === 0) {
-            return <span className="text-muted-foreground">—</span>;
-          }
-          return value;
-        },
-      })),
-    [columns]
+      columns.map((column) => {
+        const defaultWidth = getDefaultColumnWidth(column.name);
+        return {
+          id: column.id,
+          accessorFn: (row) => row.values[column.id] ?? "",
+          header: column.name,
+          enableSorting: true,
+          size: columnSizing[column.id] ?? defaultWidth,
+          minSize: 100,
+          maxSize: 1000,
+          cell: ({ getValue }) => {
+            const value = getValue<string>();
+            if (value === null || value === undefined || value.length === 0) {
+              return <span className="text-muted-foreground">—</span>;
+            }
+            return value;
+          },
+        };
+      }),
+    [columns, columnSizing, getDefaultColumnWidth]
   );
 
   const table = useReactTable({
@@ -250,9 +257,13 @@ export function ListDataTable({
     state: {
       sorting,
       globalFilter,
+      columnSizing,
     },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
+    onColumnSizingChange: setColumnSizing,
+    columnResizeMode: "onChange" as ColumnResizeMode,
+    enableColumnResizing: true,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -274,33 +285,56 @@ export function ListDataTable({
       <DataTableToolbar table={table} />
       <div className="rounded-lg border ">
         <ScrollArea ref={scrollAreaRef} className="h-[70vh] w-full">
-          <Table className="w-max min-w-full">
+          <Table className="w-max min-w-full" style={{ tableLayout: "fixed" }}>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  <TableHead className="sticky top-0 z-10 w-14 bg-background text-right">
-                    #
-                  </TableHead>
+                  <TableHead
+                    className="sticky top-0 z-10 w-14 bg-background text-right"
+                    style={{ borderRight: "1px solid hsl(var(--border))" }}
+                  ></TableHead>
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
                       className={cn(
                         "sticky top-0 z-10 bg-background",
-                        columnWidthClassById.get(header.column.id)
+                        header.column.getIsResizing() &&
+                          "border-r-2 border-primary"
                       )}
+                      style={{
+                        width: header.getSize(),
+                        minWidth: header.column.columnDef.minSize,
+                        maxWidth: header.column.columnDef.maxSize,
+                        borderRight: "1px solid hsl(var(--border))",
+                        position: "sticky",
+                      }}
                     >
                       {header.isPlaceholder ? null : (
-                        <button
-                          type="button"
-                          className="flex items-center gap-1 text-left font-semibold"
-                          onClick={header.column.getToggleSortingHandler()}
-                        >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                          {renderSortIcon(header.column.getIsSorted())}
-                        </button>
+                        <>
+                          <div className="flex items-center">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 text-left font-semibold"
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                              {renderSortIcon(header.column.getIsSorted())}
+                            </button>
+                          </div>
+                          <div
+                            onMouseDown={header.getResizeHandler()}
+                            onTouchStart={header.getResizeHandler()}
+                            className={cn(
+                              "absolute right-[-2px] top-0 bottom-0 w-[8px] cursor-col-resize select-none touch-none   hover:border-r-2 border-neutral-500 transition-colors",
+                              header.column.getIsResizing() &&
+                                "z-20  hover:border-r-2"
+                            )}
+                            aria-label="Resize column"
+                          />
+                        </>
                       )}
                     </TableHead>
                   ))}
@@ -317,7 +351,10 @@ export function ListDataTable({
                       key={row.id}
                       className={cn(!isRowExpanded && "h-10")}
                     >
-                      <TableCell className="w-14 select-none text-right text-muted-foreground">
+                      <TableCell
+                        className="w-14 select-none text-right text-muted-foreground"
+                        style={{ borderRight: "1px solid hsl(var(--border))" }}
+                      >
                         {rowIndex + 1}
                       </TableCell>
                       {row.getVisibleCells().map((cell) => {
@@ -330,10 +367,13 @@ export function ListDataTable({
                         return (
                           <TableCell
                             key={cell.id}
-                            className={cn(
-                              "cursor-pointer align-top",
-                              columnWidthClassById.get(cell.column.id)
-                            )}
+                            className="cursor-pointer align-top"
+                            style={{
+                              width: cell.column.getSize(),
+                              minWidth: cell.column.columnDef.minSize,
+                              maxWidth: cell.column.columnDef.maxSize,
+                              borderRight: "1px solid hsl(var(--border))",
+                            }}
                             onClick={() =>
                               setActiveCell((prev) => {
                                 if (
