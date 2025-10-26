@@ -83,6 +83,38 @@ export function ListDataTable({
     columnId: string;
   } | null>(null);
 
+  const [cellPosition, setCellPosition] = React.useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+
+  const popupRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Close popup when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        popupRef.current &&
+        !popupRef.current.contains(event.target as Node)
+      ) {
+        // Only close if not clicking on a table cell
+        const target = event.target as HTMLElement;
+        if (!target.closest("td")) {
+          setActiveCell(null);
+          setCellPosition(null);
+        }
+      }
+    }
+
+    if (activeCell) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [activeCell]);
+
   const getDefaultColumnWidth = React.useCallback((columnName: string) => {
     const name = (columnName || "").toLowerCase();
     if (
@@ -264,7 +296,6 @@ export function ListDataTable({
     onColumnSizingChange: setColumnSizing,
     columnResizeMode: "onChange" as ColumnResizeMode,
     enableColumnResizing: true,
-    enableColumnSizing: true,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -347,13 +378,8 @@ export function ListDataTable({
             <TableBody>
               {tableRows.length ? (
                 tableRows.map((row, rowIndex) => {
-                  const isRowExpanded =
-                    activeCell !== null && activeCell.rowId === row.id;
                   return (
-                    <TableRow
-                      key={row.id}
-                      className={cn(!isRowExpanded && "h-10")}
-                    >
+                    <TableRow key={row.id} className="h-10">
                       <TableCell
                         className="w-10 select-none text-center text-neutral-400"
                         style={{ borderRight: "1px solid hsl(var(--border))" }}
@@ -361,12 +387,6 @@ export function ListDataTable({
                         {rowIndex + 1}
                       </TableCell>
                       {row.getVisibleCells().map((cell) => {
-                        const isActive =
-                          activeCell !== null &&
-                          activeCell.rowId === row.id &&
-                          activeCell.columnId === cell.column.id;
-                        const rawValue = (cell.getValue<string>() ||
-                          "") as string;
                         return (
                           <TableCell
                             key={cell.id}
@@ -377,37 +397,38 @@ export function ListDataTable({
                               maxWidth: cell.column.columnDef.maxSize,
                               borderRight: "1px solid hsl(var(--border))",
                             }}
-                            onClick={() =>
+                            onClick={(e) => {
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
                               setActiveCell((prev) => {
                                 if (
                                   prev &&
                                   prev.rowId === row.id &&
                                   prev.columnId === cell.column.id
                                 ) {
+                                  setCellPosition(null);
                                   return null;
                                 }
+                                setCellPosition({
+                                  top: rect.top,
+                                  left: rect.left,
+                                });
                                 return {
                                   rowId: row.id,
                                   columnId: cell.column.id,
                                 };
-                              })
-                            }
+                              });
+                            }}
                           >
-                            {isActive ? (
-                              <div className="rounded-md ring-2 ring-primary">
-                                <ExpandedReadOnlyTextArea value={rawValue} />
-                              </div>
-                            ) : (
-                              <div
-                                className="truncate whitespace-nowrap overflow-hidden text-ellipsis"
-                                style={{ maxWidth: "100%" }}
-                              >
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext()
-                                )}
-                              </div>
-                            )}
+                            <div
+                              className="truncate whitespace-nowrap overflow-hidden text-ellipsis"
+                              style={{ maxWidth: "100%" }}
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </div>
                           </TableCell>
                         );
                       })}
@@ -454,6 +475,26 @@ export function ListDataTable({
           <div ref={setSentinelNode} className="h-4 w-full" />
         </ScrollArea>
       </div>
+      {activeCell && cellPosition && (
+        <div
+          ref={popupRef}
+          className="fixed z-50 border border-neutral-700 shadow-lg"
+          style={{
+            top: `${cellPosition.top}px`,
+            left: `${cellPosition.left}px`,
+            width: "400px",
+            maxHeight: "300px",
+          }}
+        >
+          <ExpandedReadOnlyTextArea
+            value={
+              rows.find((r) => r.id === activeCell.rowId)?.values[
+                activeCell.columnId
+              ] || ""
+            }
+          />
+        </div>
+      )}
       <div className="flex items-center justify-center">
         <Button
           onClick={() => void loadMore(true)}
@@ -487,7 +528,10 @@ function ExpandedReadOnlyTextArea({ value }: { value: string }) {
       return;
     }
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    const scrollHeight = el.scrollHeight;
+    const maxHeight = 300 - 16; // Account for padding
+    el.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+    el.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
   }, [value]);
 
   return (
@@ -496,7 +540,7 @@ function ExpandedReadOnlyTextArea({ value }: { value: string }) {
       readOnly
       value={value}
       rows={1}
-      className="block w-full resize-none overflow-hidden whitespace-pre-wrap wrap-break-word rounded-md border border-primary/60 bg-background px-2 py-1 text-sm focus:outline-none"
+      className="block w-full resize-none whitespace-pre-wrap wrap-break-word rounded-md bg-background px-3 py-2 text-sm focus:outline-none"
     />
   );
 }
