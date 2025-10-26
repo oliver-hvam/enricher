@@ -1,13 +1,53 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { listCells, listColumns, lists, listRows } from "@/db/schema";
+import { datasetRows, datasets, listColumns } from "@/db/schema";
+import { randomUUID } from "crypto";
 
 export interface ParsedDataset {
   columns: string[];
   rows: string[][];
 }
 
+export type JsonRow = Record<string, unknown>;
+
+export async function datasetExistsByName(name: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: datasets.id })
+    .from(datasets)
+    .where(eq(datasets.name, name))
+    .limit(1);
+  return rows.length > 0;
+}
+
+export async function createDataset(name: string): Promise<string> {
+  const id = randomUUID();
+  await db.insert(datasets).values({ id, name });
+  return id;
+}
+
+export async function insertColumns(datasetId: string, header: string[]) {
+  if (header.length === 0) return;
+  await db.insert(listColumns).values(
+    header.map((name, i) => ({
+      id: randomUUID(),
+      dataset_id: datasetId,
+      name,
+      position: i,
+      metadata: null,
+    }))
+  );
+}
+
+export async function insertRowsBatch(
+  datasetId: string,
+  rows: JsonRow[]
+): Promise<void> {
+  if (rows.length === 0) return;
+  await db.insert(datasetRows).values(rows.map((row) => ({ datasetId, row })));
+}
+
+/*
 export async function createListFromCsvStream(
   name: string,
   header: string[],
@@ -28,11 +68,13 @@ export async function createListFromCsvStream(
 
     const insertedColumns = await tx
       .insert(listColumns)
-      .values(header.map((columnName, index) => ({
-        listId: insertedList.id,
-        name: columnName.trim(),
-        position: index,
-      })))
+      .values(
+        header.map((columnName, index) => ({
+          listId: insertedList.id,
+          name: columnName.trim(),
+          position: index,
+        }))
+      )
       .returning({ id: listColumns.id, position: listColumns.position });
 
     const buffer: string[][] = [];
@@ -41,16 +83,30 @@ export async function createListFromCsvStream(
     async function flushBuffer() {
       if (buffer.length === 0) return;
 
-      const positions = Array.from({ length: buffer.length }, (_, i) => nextRowPosition + i);
-      const rowsToInsert = positions.map((pos) => ({ listId: insertedList.id, position: pos }));
+      const positions = Array.from(
+        { length: buffer.length },
+        (_, i) => nextRowPosition + i
+      );
+      const rowsToInsert = positions.map((pos) => ({
+        listId: insertedList.id,
+        position: pos,
+      }));
       const insertedRows = await tx
         .insert(listRows)
         .values(rowsToInsert)
         .returning({ id: listRows.id, position: listRows.position });
 
       // Build and insert cells in chunks to avoid oversized payloads
-      let cellBatch: { rowId: string; columnId: string; rawValue: string | null }[] = [];
-      const pushCell = async (cell: { rowId: string; columnId: string; rawValue: string | null }) => {
+      let cellBatch: {
+        rowId: string;
+        columnId: string;
+        rawValue: string | null;
+      }[] = [];
+      const pushCell = async (cell: {
+        rowId: string;
+        columnId: string;
+        rawValue: string | null;
+      }) => {
         cellBatch.push(cell);
         if (cellBatch.length >= maxCellsPerInsert) {
           await tx.insert(listCells).values(cellBatch);
@@ -91,7 +147,9 @@ export async function createListFromCsvStream(
     return insertedList.id;
   });
 }
+*/
 
+/*
 export async function getLists() {
   const baseLists = await db
     .select({
@@ -321,3 +379,4 @@ export async function getRowValues(
     cells.map((cell) => [cell.columnId, cell.rawValue ?? null])
   );
 }
+*/

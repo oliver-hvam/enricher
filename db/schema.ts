@@ -1,18 +1,17 @@
 import {
+  index,
   integer,
   jsonb,
   pgTable,
-  text,
   timestamp,
-  uniqueIndex,
+  unique,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
 
-export const lists = pgTable("lists", {
+export const datasets = pgTable("datasets", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).unique().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -21,81 +20,39 @@ export const lists = pgTable("lists", {
     .notNull(),
 });
 
-export const listColumns = pgTable("list_columns", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  listId: uuid("list_id")
-    .notNull()
-    .references(() => lists.id, { onDelete: "cascade" }),
-  name: varchar("name", { length: 255 }).notNull(),
-  position: integer("position").notNull(),
-  metadata: jsonb("metadata").$type<Record<string, unknown> | null>().default(null),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
-export const listRows = pgTable("list_rows", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  listId: uuid("list_id")
-    .notNull()
-    .references(() => lists.id, { onDelete: "cascade" }),
-  position: integer("position").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
-});
-
-export const listCells = pgTable(
-  "list_cells",
+export const listColumns = pgTable(
+  "dataset_columns",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    rowId: uuid("row_id")
+    dataset_id: uuid("dataset_id")
       .notNull()
-      .references(() => listRows.id, { onDelete: "cascade" }),
-    columnId: uuid("column_id")
-      .notNull()
-      .references(() => listColumns.id, { onDelete: "cascade" }),
-    rawValue: text("raw_value"),
+      .references(() => datasets.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    position: integer("position").notNull(),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown> | null>()
+      .default(null),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
-  (table) => ({
-    rowColumnUnique: uniqueIndex("list_cells_row_column_idx").on(
-      table.rowId,
-      table.columnId
-    ),
-  })
+  (t) => [
+    unique().on(t.dataset_id, t.position),
+    unique().on(t.dataset_id, t.name),
+  ]
 );
 
-export const listsRelations = relations(lists, ({ many }) => ({
-  columns: many(listColumns),
-  rows: many(listRows),
-}));
-
-export const listColumnsRelations = relations(listColumns, ({ one, many }) => ({
-  list: one(lists, {
-    fields: [listColumns.listId],
-    references: [lists.id],
-  }),
-  cells: many(listCells),
-}));
-
-export const listRowsRelations = relations(listRows, ({ one, many }) => ({
-  list: one(lists, {
-    fields: [listRows.listId],
-    references: [lists.id],
-  }),
-  cells: many(listCells),
-}));
-
-export const listCellsRelations = relations(listCells, ({ one }) => ({
-  row: one(listRows, {
-    fields: [listCells.rowId],
-    references: [listRows.id],
-  }),
-  column: one(listColumns, {
-    fields: [listCells.columnId],
-    references: [listColumns.id],
-  }),
-}));
+export const datasetRows = pgTable(
+  "dataset_rows",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    datasetId: uuid("dataset_id")
+      .notNull()
+      .references(() => datasets.id, { onDelete: "cascade" }),
+    row: jsonb("row").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [index("idx_dataset_rows_dataset_id").on(t.datasetId)]
+);

@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 
@@ -17,16 +16,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { uploadListAction } from "@/app/lists/actions";
 import { cn } from "@/lib/utils";
-import { useActionState } from "react";
-import { uploadListInitialState, UploadListState } from "../constants";
 
-function SubmitButton({ className }: { className?: string }) {
-  const { pending } = useFormStatus();
+function SubmitButton({ loading }: { loading: boolean }) {
   return (
-    <Button type="submit" disabled={pending} className={className}>
-      {pending ? "Uploading..." : "Upload"}
+    <Button type="submit" disabled={loading} className="w-full">
+      {loading ? "Uploading..." : "Upload"}
     </Button>
   );
 }
@@ -38,22 +33,60 @@ export function AddListDialog({
 }) {
   const router = useRouter();
   const formRef = React.useRef<HTMLFormElement>(null);
+
   const [open, setOpen] = React.useState(false);
-  const [state, formAction] = useActionState<UploadListState, FormData>(
-    uploadListAction,
-    uploadListInitialState
-  );
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [name, setName] = React.useState("");
+  const [file, setFile] = React.useState<File | null>(null);
 
-  React.useEffect(() => {
-    if (state.status === "success") {
-      formRef.current?.reset();
-      setOpen(false);
-      router.prefetch(`/lists/${state.listId}`);
-      router.push(`/lists/${state.listId}`);
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+
+    if (!file || !name.trim()) {
+      setError("Please provide both a name and a CSV file.");
+      return;
     }
-  }, [router, state]);
 
-  const errorMessage = state.status === "error" ? state.message : null;
+    setLoading(true);
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("name", name.trim());
+
+      const res = await fetch("/lists/import", {
+        method: "POST",
+        body: fd,
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error || "Upload failed");
+      }
+
+      // Success → navigate to new list page
+      formRef.current?.reset();
+      setFile(null);
+      setName("");
+      setOpen(false);
+
+      router.prefetch(`/lists/${json.listId}`);
+      router.push(`/lists/${json.listId}`);
+    } catch (err: unknown) {
+      let message = "Something went wrong";
+
+      if (err instanceof Error) {
+        message = err.message;
+      }
+      console.error(err);
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -63,6 +96,7 @@ export function AddListDialog({
           {triggerLabel}
         </Button>
       </DialogTrigger>
+
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload CSV</DialogTitle>
@@ -71,9 +105,10 @@ export function AddListDialog({
             create a new list.
           </DialogDescription>
         </DialogHeader>
+
         <form
           ref={formRef}
-          action={formAction}
+          onSubmit={onSubmit}
           className="flex flex-col gap-4"
           encType="multipart/form-data"
         >
@@ -83,24 +118,37 @@ export function AddListDialog({
               id="name"
               name="name"
               placeholder="Customer imports"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
               autoComplete="off"
+              required
             />
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="file">CSV file</Label>
-            <Input id="file" name="file" type="file" accept=".csv" required />
+            <Input
+              id="file"
+              name="file"
+              type="file"
+              accept=".csv,text/csv"
+              required
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
             <p className="text-xs text-muted-foreground">
               The first row should contain column names. Values are stored as
               text for now.
             </p>
           </div>
-          {errorMessage ? (
+
+          {error && (
             <p className={cn("text-sm font-medium text-destructive", "mt-1")}>
-              {errorMessage}
+              {error}
             </p>
-          ) : null}
+          )}
+
           <DialogFooter className="mt-4">
-            <SubmitButton />
+            <SubmitButton loading={loading} />
           </DialogFooter>
         </form>
       </DialogContent>
