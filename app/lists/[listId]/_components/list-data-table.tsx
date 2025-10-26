@@ -325,7 +325,7 @@ export function ListDataTable({
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   <TableHead
-                    className="sticky top-0 z-10 w-10 bg-neutral-100 text-center rounded-tl-lg"
+                    className="sticky top-0 z-10 w-10 max-w-10 bg-neutral-100 text-center rounded-tl-lg"
                     style={{ borderRight: "1px solid hsl(var(--border))" }}
                   ></TableHead>
                   {headerGroup.headers.map((header) => (
@@ -378,11 +378,17 @@ export function ListDataTable({
             <TableBody>
               {tableRows.length ? (
                 tableRows.map((row, rowIndex) => {
+                  const isLastRow = rowIndex === tableRows.length - 1;
                   return (
                     <TableRow key={row.id} className="h-10">
                       <TableCell
-                        className="w-10 select-none text-center text-neutral-400"
-                        style={{ borderRight: "1px solid hsl(var(--border))" }}
+                        className="w-10 max-w-10 select-none text-center text-neutral-400"
+                        style={{
+                          borderRight: "1px solid hsl(var(--border))",
+                          borderBottom: isLastRow
+                            ? "1px solid hsl(var(--border))"
+                            : undefined,
+                        }}
                       >
                         {rowIndex + 1}
                       </TableCell>
@@ -396,6 +402,9 @@ export function ListDataTable({
                               minWidth: cell.column.columnDef.minSize,
                               maxWidth: cell.column.columnDef.maxSize,
                               borderRight: "1px solid hsl(var(--border))",
+                              borderBottom: isLastRow
+                                ? "1px solid hsl(var(--border))"
+                                : undefined,
                             }}
                             onClick={(e) => {
                               const rect =

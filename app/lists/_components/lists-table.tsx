@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { DeleteListDialog } from "./delete-list-dialog";
 
 export interface ListSummary {
   id: string;
@@ -69,9 +70,12 @@ export function ListsTable({ lists }: ListsTableProps) {
                 {formatDate(list.createdAt)}
               </TableCell>
               <TableCell className="text-right">
-                <Button asChild variant="ghost" size="sm">
-                  <Link href={`/lists/${list.id}`}>Open</Link>
-                </Button>
+                <div className="flex justify-end gap-1">
+                  <Button asChild variant="secondary" size="sm">
+                    <Link href={`/lists/${list.id}`}>Open</Link>
+                  </Button>
+                  <DeleteListDialog listId={list.id} listName={list.name} />
+                </div>
               </TableCell>
             </TableRow>
           ))}
