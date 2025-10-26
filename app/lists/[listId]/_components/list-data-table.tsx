@@ -281,7 +281,7 @@ export function ListDataTable({
   const tableRows = table.getRowModel().rows;
 
   return (
-    <div className="space-y-4 ">
+    <div className="space-y-4">
       <DataTableToolbar table={table} />
       <div className="rounded-lg border ">
         <ScrollArea ref={scrollAreaRef} className="h-[70vh] w-full">
@@ -290,7 +290,7 @@ export function ListDataTable({
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   <TableHead
-                    className="sticky top-0 z-10 w-14 bg-neutral-100 text-center rounded-tl-lg"
+                    className="sticky top-0 z-10 w-10 bg-neutral-100 text-center rounded-tl-lg"
                     style={{ borderRight: "1px solid hsl(var(--border))" }}
                   ></TableHead>
                   {headerGroup.headers.map((header) => (
@@ -351,7 +351,7 @@ export function ListDataTable({
                       className={cn(!isRowExpanded && "h-10")}
                     >
                       <TableCell
-                        className="w-14 select-none text-center font-medium text-neutral-500"
+                        className="w-10 select-none text-center text-neutral-400"
                         style={{ borderRight: "1px solid hsl(var(--border))" }}
                       >
                         {rowIndex + 1}
