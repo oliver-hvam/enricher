@@ -303,14 +303,15 @@ export function ListDataTable({
   const tableRows = table.getRowModel().rows;
 
   return (
-    <div className="space-y-4 max-w-full w-full">
+    <div className="space-y-4 max-w-full w-full max-h-full flex flex-1 flex-col">
       <DataTableToolbar table={table} />
-      <div className={cn("border-t border-b", `rounded-${rounding}`)}>
+      <div className={cn("border-t border-b max-h-full flex-1 flex-col flex", `rounded-${rounding}`)}>
         <div
           ref={scrollAreaRef}
-          className="h-[70vh] overflow-x-auto overflow-y-auto"
+          className="overflow-y-auto flex-1 min-h-0 bg-yellow-400 flex flex-col max-h-full"
         >
-          <Table style={{ tableLayout: "fixed" }}>
+       <div className="h-[1700px] max-h-full bg-blue-200">Hey</div> 
+       {/*    <Table style={{ tableLayout: "fixed" }} className="max-h-full min-h-full">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -376,7 +377,7 @@ export function ListDataTable({
                   return (
                     <TableRow key={row.id} className="h-8">
                       <TableCell
-                        className="w-8 max-w-8 select-none text-center text-neutral-400"
+                        className="w-8 max-w-8 select-none text-center text-neutral-400 text-sm !p-0"
                         style={{
                           borderRight: "1px solid hsl(var(--border))",
                           borderBottom: isLastRow
@@ -449,10 +450,9 @@ export function ListDataTable({
                 </TableRow>
               )}
             </TableBody>
-          </Table>
-          <div ref={setSentinelNode} className="h-4 w-full" />
+          </Table>  */}
+{/*           <div ref={setSentinelNode} className="h-4 w-full" /> */}
         </div>
-        {/* Footer */}
         <div className="flex items-center justify-between px-4 h-[50px] border-t bg-muted/30 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <span>
