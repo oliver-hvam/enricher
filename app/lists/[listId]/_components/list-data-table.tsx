@@ -141,10 +141,6 @@ export function ListDataTable({
   }, [pageSize]);
 
   React.useEffect(() => {
-    hasMoreRef.current = hasMore;
-  }, [hasMore]);
-
-  React.useEffect(() => {
     return () => {
       observerRef.current?.disconnect();
     };
