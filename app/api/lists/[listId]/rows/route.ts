@@ -1,68 +1,50 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getListRows } from "@/lib/data-access/lists"; // DAL call
+
 export const runtime = "nodejs";
 
-import { NextRequest, NextResponse } from "next/server";
-import { getDatasetById, getDatasetRows } from "@/lib/data-access/lists";
+/**
+ * GET /api/lists/:id/rows?cursor=<uuid>&limit=<int>
+ * Returns paginated rows and their column definitions.
+ */
 
 interface RouteContext {
   params: Promise<{
     listId: string;
   }>;
 }
-
 export async function GET(req: NextRequest, context: RouteContext) {
   try {
-    const { listId } = await context.params;
+    const listId = (await context.params).listId;
     const { searchParams } = new URL(req.url);
-
+    const limit = Number(searchParams.get("limit") ?? 50);
     const cursor = searchParams.get("cursor");
-    const limit = searchParams.get("limit");
 
-    const pageSize = limit ? parseInt(limit, 10) : 50;
-    // Since our schema doesn't have position, we'll use offset based on cursor
-    // Cursor will represent the number of rows already loaded
-    const offset = cursor ? parseInt(cursor, 10) + 1 : 0;
+    // Get data from DAL (rows + columns + nextCursor)
+    const result = await getListRows(listId, { limit, cursor });
 
-    const dataset = await getDatasetById(listId);
-
-    if (!dataset) {
-      return NextResponse.json({ error: "Dataset not found" }, { status: 404 });
+    if (!result) {
+      return NextResponse.json({ error: "List not found" }, { status: 404 });
     }
 
-    // Create a map from column name to column ID
-    const columnNameToId = new Map(
-      dataset.columns.map((col) => [col.name, col.id])
-    );
-
-    const dbRows = await getDatasetRows(listId, {
-      limit: pageSize,
-      offset,
-    });
-
-    // Transform rows: convert from column-name-keyed to column-id-keyed
-    const rows = dbRows.map((row, index) => {
+    // Transform rows to client shape: values keyed by column ID
+    const nameToId = new Map(result.columns.map((c) => [c.name, c.id]));
+    const rows = result.rows.map((r) => {
       const values: Record<string, string | null> = {};
-
-      for (const [columnName, value] of Object.entries(row.row)) {
-        const columnId = columnNameToId.get(columnName);
-        if (columnId) {
-          values[columnId] = value as string | null;
-        }
+      for (const [name, value] of Object.entries(r.row)) {
+        const id = nameToId.get(name);
+        if (id) values[id] = (value as string) ?? null;
       }
-
-      return {
-        id: row.id,
-        values,
-        position: offset + index, // Generate position based on offset
-      };
+      return { id: r.id, values };
     });
 
-    return NextResponse.json({ rows }, { status: 200 });
+    return NextResponse.json({ rows, nextCursor: result.nextCursor });
   } catch (err: unknown) {
-    let message = "Failed to fetch rows";
-
+    let error = "Failed to fetch list rows";
     if (err instanceof Error) {
-      message = err.message;
+      error = err.message;
     }
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Failed to fetch list rows", err);
+    return NextResponse.json({ error }, { status: 500 });
   }
 }

@@ -299,7 +299,12 @@ export function ListDataTable({
 
   if (shouldShowPlaceholder) {
     return (
-      <div className={cn("border border-dashed p-12 text-center text-sm text-muted-foreground", `rounded-${rounding}`)}>
+      <div
+        className={cn(
+          "border border-dashed p-12 text-center text-sm text-muted-foreground",
+          `rounded-${rounding}`
+        )}
+      >
         No columns available yet. Add a column to start populating data.
       </div>
     );
@@ -311,13 +316,19 @@ export function ListDataTable({
     <div className="space-y-4 max-w-full w-full">
       <DataTableToolbar table={table} />
       <div className={cn("border-t border-b", `rounded-${rounding}`)}>
-        <div ref={scrollAreaRef} className="h-[70vh] overflow-x-auto overflow-y-auto" >
+        <div
+          ref={scrollAreaRef}
+          className="h-[70vh] overflow-x-auto overflow-y-auto"
+        >
           <Table style={{ tableLayout: "fixed" }}>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   <TableHead
-                    className={cn("sticky top-0 z-10 w-8 max-w-8 bg-neutral-100 text-center", `rounded-tl-${rounding}`)}
+                    className={cn(
+                      "sticky top-0 z-10 w-8 max-w-8 bg-neutral-100 text-center",
+                      `rounded-tl-${rounding}`
+                    )}
                     style={{ borderRight: "1px solid hsl(var(--border))" }}
                   ></TableHead>
                   {headerGroup.headers.map((header) => (
@@ -454,12 +465,18 @@ export function ListDataTable({
         {/* Footer */}
         <div className="flex items-center justify-between px-4 h-[50px] border-t bg-muted/30 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <span>{rows.length} row{rows.length !== 1 ? 's' : ''} loaded</span>
+            <span>
+              {rows.length} row{rows.length !== 1 ? "s" : ""} loaded
+            </span>
             {globalFilter && (
-              <span className="text-xs bg-background px-2 py-0.5 rounded">Filtered</span>
+              <span className="text-xs bg-background px-2 py-0.5 rounded">
+                Filtered
+              </span>
             )}
             {sorting.length > 0 && (
-              <span className="text-xs bg-background px-2 py-0.5 rounded">Sorted</span>
+              <span className="text-xs bg-background px-2 py-0.5 rounded">
+                Sorted
+              </span>
             )}
             {loadError && (
               <span className="text-destructive">• Error loading</span>

@@ -79,7 +79,7 @@ function detectDelimiter(sample: string): string {
     if (avgColumnCount === 1) {
       score -= 50; // Heavy penalty for no actual delimiter
     } else if (avgColumnCount >= 2 && avgColumnCount <= 50) {
-      score += 50;
+      score += 300;
     } else if (avgColumnCount > 50) {
       score += 20; // Many columns might be over-splitting
     }
