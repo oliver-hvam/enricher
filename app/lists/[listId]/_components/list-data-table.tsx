@@ -472,6 +472,25 @@ export function ListDataTable({
                   </TableCell>
                 </TableRow>
               ) : null}
+              {!isLoading && !loadError && hasMore ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={Math.max(columns.length + 1, 1)}
+                    className="h-16 text-center"
+                  >
+                    <div className="flex items-center justify-center">
+                      <Button
+                        onClick={() => void loadMore(true)}
+                        disabled={isLoading}
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                      >
+                        Load more
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : null}
             </TableBody>
           </Table>
           <div ref={setSentinelNode} className="h-4 w-full" />
@@ -497,16 +516,6 @@ export function ListDataTable({
           />
         </div>
       )}
-      <div className="flex items-center justify-center">
-        <Button
-          onClick={() => void loadMore(true)}
-          disabled={isLoading}
-          variant="outline"
-          className="w-full sm:w-auto"
-        >
-          {isLoading ? "Loading..." : "Load more"}
-        </Button>
-      </div>
     </div>
   );
 }
