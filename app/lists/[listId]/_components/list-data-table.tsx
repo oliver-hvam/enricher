@@ -303,9 +303,9 @@ export function ListDataTable({
   const tableRows = table.getRowModel().rows;
 
   return (
-    <div className="space-y-4 max-w-full w-full max-h-full flex flex-1 flex-col">
+    <div className="space-y-4 max-w-full w-full h-full flex flex-1 flex-col">
       <DataTableToolbar table={table} />
-      <div className={cn("border-t border-b max-h-full flex-1 flex-col flex", `rounded-${rounding}`)}>
+      <div className={cn("border-t border-b h-full flex-1 flex-col flex", `rounded-${rounding}`)}>
         <div
           ref={scrollAreaRef}
           className="overflow-y-auto flex-1 min-h-0 bg-yellow-400 flex flex-col max-h-full"

@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(GeistSans.variable, GeistMono.variable)}>
       <body>
-        <div className="flex min-h-screen w-screen bg-background text-foreground">
+        <div className="flex h-screen w-screen bg-background text-foreground">
           <Sidebar /> {/* should have a fixed width, e.g. w-64 */}
           <div className="flex flex-1 flex-col overflow-hidden">
             <header className="flex items-center justify-between border-b px-8 py-4 shrink-0">
