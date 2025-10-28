@@ -295,9 +295,11 @@ export function ListDataTable({
     getRowId: (row) => row.id,
   });
 
+  const rounding = "none";
+
   if (shouldShowPlaceholder) {
     return (
-      <div className="rounded-lg border border-dashed p-12 text-center text-sm text-muted-foreground">
+      <div className={cn("border border-dashed p-12 text-center text-sm text-muted-foreground", `rounded-${rounding}`)}>
         No columns available yet. Add a column to start populating data.
       </div>
     );
@@ -308,21 +310,22 @@ export function ListDataTable({
   return (
     <div className="space-y-4 max-w-full w-full">
       <DataTableToolbar table={table} />
-      <div className="rounded-lg border">
+      <div className={cn("border-t border-b", `rounded-${rounding}`)}>
         <div ref={scrollAreaRef} className="h-[70vh] overflow-x-auto overflow-y-auto" >
           <Table style={{ tableLayout: "fixed" }}>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   <TableHead
-                    className="sticky top-0 z-10 w-10 max-w-10 bg-neutral-100 text-center rounded-tl-lg"
+                    className={cn("sticky top-0 z-10 w-10 max-w-10 bg-neutral-100 text-center", `rounded-tl-${rounding}`)}
                     style={{ borderRight: "1px solid hsl(var(--border))" }}
                   ></TableHead>
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
                       className={cn(
-                        "sticky top-0 z-10 bg-neutral-100 border-r border-border last:border-r-0 last:rounded-tr-lg",
+                        "sticky top-0 z-10 bg-neutral-100 border-r border-border last:border-r-0",
+                        `last:rounded-tr-${rounding}`,
                         header.column.getIsResizing() &&
                           "border-r-2 border-primary"
                       )}
