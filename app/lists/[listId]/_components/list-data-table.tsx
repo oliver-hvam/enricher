@@ -317,8 +317,8 @@ export function ListDataTable({
   return (
     <div className="space-y-4 bg-green-300 max-w-full w-full p-4 ">
       <DataTableToolbar table={table} />
-      <div className="rounded-lg border overflow-x-scroll">
-        <ScrollArea ref={scrollAreaRef} className="h-[70vh] bg-purple-300">
+      <div className="rounded-lg border">
+        <div ref={scrollAreaRef} className="h-[70vh] bg-purple-300 bg-red-400 overflow-x-auto overflow-y-auto" >
           <Table className="bg-amber-200 p-3" style={{ tableLayout: "fixed" }}>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -481,7 +481,7 @@ export function ListDataTable({
             </TableBody>
           </Table>
           <div ref={setSentinelNode} className="h-4 w-full" />
-        </ScrollArea>
+        </div>
       </div>
       {activeCell && cellPosition && (
         <div
