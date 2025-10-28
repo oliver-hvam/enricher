@@ -16,7 +16,7 @@ export default async function ListDetailPage({ params }: ListPageProps) {
 
   return (
     <div className="h-full bg-blue-400 flex flex-col">
-      <div className="px-8 py-4">
+      <div className="px-8 py-4 shrink-0">
         <ListDetailHeader
           listId={dataset.id}
           name={dataset.name}
@@ -25,7 +25,7 @@ export default async function ListDetailPage({ params }: ListPageProps) {
           updatedAt={dataset.updatedAt}
         />
       </div>
-      <div className="h-full bg-red-400 overflow-hidden flex-1 flex flex-col">
+      <div className="bg-red-400 overflow-hidden flex-1 flex flex-col">
         {/* <div className="min-h-full bg-green-400 overflow-hidden flex-1">Table</div> */}
       <ListDataTable
         listId={dataset.id}
