@@ -317,7 +317,7 @@ export function ListDataTable({
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   <TableHead
-                    className={cn("sticky top-0 z-10 w-10 max-w-10 bg-neutral-100 text-center", `rounded-tl-${rounding}`)}
+                    className={cn("sticky top-0 z-10 w-8 max-w-8 bg-neutral-100 text-center", `rounded-tl-${rounding}`)}
                     style={{ borderRight: "1px solid hsl(var(--border))" }}
                   ></TableHead>
                   {headerGroup.headers.map((header) => (
@@ -375,7 +375,7 @@ export function ListDataTable({
                   return (
                     <TableRow key={row.id} className="h-10">
                       <TableCell
-                        className="w-10 max-w-10 select-none text-center text-neutral-400"
+                        className="w-8 max-w-8 select-none text-center text-neutral-400"
                         style={{
                           borderRight: "1px solid hsl(var(--border))",
                           borderBottom: isLastRow
