@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 export interface ListDataRow {
   id: string;
   values: Record<string, string | null>;
-  position?: number;
 }
 
 export interface ListDataColumn {
@@ -43,6 +42,7 @@ interface ListDataTableProps {
 
 interface ListRowsResponse {
   rows: ListDataRow[];
+  nextCursor: string | null;
 }
 
 export function ListDataTable({
@@ -65,9 +65,7 @@ export function ListDataTable({
   >({});
 
   const hasMoreRef = React.useRef(false);
-  const lastPositionRef = React.useRef<number>(
-    -1
-  );
+  const cursorRef = React.useRef<string | null>(null);
   const isLoadingRef = React.useRef(false);
   const scrollAreaRef = React.useRef<HTMLDivElement | null>(null);
   const sentinelNodeRef = React.useRef<HTMLDivElement | null>(null);
@@ -137,7 +135,7 @@ export function ListDataTable({
   // Reset state when pageSize changes
   React.useEffect(() => {
     setRows([]);
-    lastPositionRef.current = -1;
+    cursorRef.current = null;
     hasMoreRef.current = true;
     setHasMore(true);
   }, [pageSize]);
@@ -163,10 +161,7 @@ export function ListDataTable({
       isLoadingRef.current = true;
 
       try {
-        const cursorParam =
-          lastPositionRef.current >= 0
-            ? `cursor=${lastPositionRef.current}`
-            : "";
+        const cursorParam = cursorRef.current ? `cursor=${cursorRef.current}` : "";
         const sep = cursorParam ? "&" : "";
         const url = `/api/lists/${listId}/rows?${cursorParam}${sep}limit=${pageSize}`;
         const response = await fetch(url, { cache: "no-store" });
@@ -179,14 +174,14 @@ export function ListDataTable({
         const nextRows = Array.isArray(data.rows) ? data.rows : [];
 
         if (nextRows.length > 0) {
-          setRows((prev) => [...prev, ...nextRows]);
-          const nextMax = Math.max(
-            lastPositionRef.current,
-            ...nextRows.map((r) => r.position ?? -1)
-          );
-          lastPositionRef.current = nextMax;
+          setRows((prev) => {
+            const existingIds = new Set(prev.map((r) => r.id));
+            const newRows = nextRows.filter((r) => !existingIds.has(r.id));
+            return [...prev, ...newRows];
+          });
+          cursorRef.current = data.nextCursor;
 
-          if (nextRows.length < pageSize) {
+          if (!data.nextCursor || nextRows.length < pageSize) {
             hasMoreRef.current = false;
             setHasMore(false);
           }
