@@ -38,7 +38,6 @@ export interface ListDataColumn {
 interface ListDataTableProps {
   listId: string;
   columns: ListDataColumn[];
-  initialRows: ListDataRow[];
   pageSize: number;
 }
 
@@ -49,15 +48,14 @@ interface ListRowsResponse {
 export function ListDataTable({
   listId,
   columns,
-  initialRows,
   pageSize,
 }: ListDataTableProps) {
   const shouldShowPlaceholder = columns.length === 0;
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
 
-  const [rows, setRows] = React.useState<ListDataRow[]>(initialRows);
-  const [hasMore, setHasMore] = React.useState(initialRows.length === pageSize);
+  const [rows, setRows] = React.useState<ListDataRow[]>([]);
+  const [hasMore, setHasMore] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
@@ -66,11 +64,9 @@ export function ListDataTable({
     Record<string, number>
   >({});
 
-  const hasMoreRef = React.useRef(initialRows.length === pageSize);
+  const hasMoreRef = React.useRef(false);
   const lastPositionRef = React.useRef<number>(
-    initialRows.length
-      ? Math.max(...initialRows.map((r) => r.position ?? -1))
-      : -1
+    -1
   );
   const isLoadingRef = React.useRef(false);
   const scrollAreaRef = React.useRef<HTMLDivElement | null>(null);
@@ -138,15 +134,13 @@ export function ListDataTable({
     return 250;
   }, []);
 
+  // Reset state when pageSize changes
   React.useEffect(() => {
-    setRows(initialRows);
-    const moreAvailable = initialRows.length === pageSize;
-    lastPositionRef.current = initialRows.length
-      ? Math.max(...initialRows.map((r) => r.position ?? -1))
-      : -1;
-    hasMoreRef.current = moreAvailable;
-    setHasMore(moreAvailable);
-  }, [initialRows, pageSize]);
+    setRows([]);
+    lastPositionRef.current = -1;
+    hasMoreRef.current = true;
+    setHasMore(true);
+  }, [pageSize]);
 
   React.useEffect(() => {
     hasMoreRef.current = hasMore;
@@ -212,6 +206,11 @@ export function ListDataTable({
     },
     [listId, pageSize]
   );
+
+  // Trigger initial load when component mounts or when loadMore changes
+  React.useEffect(() => {
+    void loadMore(true);
+  }, [loadMore]);
 
   const handleRetry = React.useCallback(() => {
     hasMoreRef.current = true;
