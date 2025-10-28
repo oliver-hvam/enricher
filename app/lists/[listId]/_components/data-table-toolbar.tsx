@@ -14,7 +14,7 @@ export function DataTableToolbar<TData>({ table }: DataTableToolbarProps<TData>)
   const isFiltered = globalFilter.length > 0;
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-8">
       <Input
         placeholder="Filter rows..."
         value={globalFilter}

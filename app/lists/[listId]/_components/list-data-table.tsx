@@ -447,53 +447,42 @@ export function ListDataTable({
                   </TableCell>
                 </TableRow>
               )}
-              {isLoading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={Math.max(columns.length + 1, 1)}
-                    className="h-16 text-center text-sm text-muted-foreground"
-                  >
-                    Loading more rows...
-                  </TableCell>
-                </TableRow>
-              ) : null}
-              {loadError ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={Math.max(columns.length + 1, 1)}
-                    className="h-16 text-center text-sm text-muted-foreground"
-                  >
-                    <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-                      <span>{loadError}</span>
-                      <Button variant="outline" size="sm" onClick={handleRetry}>
-                        Retry
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : null}
-              {!isLoading && !loadError && hasMore ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={Math.max(columns.length + 1, 1)}
-                    className="h-16 text-center"
-                  >
-                    <div className="flex items-center justify-center">
-                      <Button
-                        onClick={() => void loadMore(true)}
-                        disabled={isLoading}
-                        variant="outline"
-                        className="w-full sm:w-auto"
-                      >
-                        Load more
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : null}
             </TableBody>
           </Table>
           <div ref={setSentinelNode} className="h-4 w-full" />
+        </div>
+        {/* Footer */}
+        <div className="flex items-center justify-between px-4 h-[50px] border-t bg-muted/30 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span>{rows.length} row{rows.length !== 1 ? 's' : ''} loaded</span>
+            {globalFilter && (
+              <span className="text-xs bg-background px-2 py-0.5 rounded">Filtered</span>
+            )}
+            {sorting.length > 0 && (
+              <span className="text-xs bg-background px-2 py-0.5 rounded">Sorted</span>
+            )}
+            {loadError && (
+              <span className="text-destructive">• Error loading</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {isLoading ? (
+              <span className="text-muted-foreground">Loading...</span>
+            ) : loadError ? (
+              <Button variant="outline" size="sm" onClick={handleRetry}>
+                Retry
+              </Button>
+            ) : hasMore ? (
+              <Button
+                onClick={() => void loadMore(true)}
+                disabled={isLoading}
+                variant="outline"
+                size="sm"
+              >
+                Load more
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
       {activeCell && cellPosition && (

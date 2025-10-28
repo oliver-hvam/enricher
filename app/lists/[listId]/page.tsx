@@ -57,13 +57,14 @@ export default async function ListDetailPage({ params }: ListPageProps) {
 
   return (
     <div>
+      <div className="px-8 py-4">
       <ListDetailHeader
         listId={dataset.id}
         name={dataset.name}
         rowCount={dataset.rowCount}
         columnCount={dataset.columns.length}
         updatedAt={dataset.updatedAt}
-      />
+      /></div>
       <ListDataTable
         listId={dataset.id}
         columns={columns}
