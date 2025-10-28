@@ -56,25 +56,7 @@ export default async function ListDetailPage({ params }: ListPageProps) {
   });
 
   return (
-    <div className="bg-blue-200 max-w-full h-full">
-      <ListDetailHeader
-        listId={dataset.id}
-        name={dataset.name}
-        rowCount={dataset.rowCount}
-        columnCount={dataset.columns.length}
-        updatedAt={dataset.updatedAt}
-      />
-      <ListDataTable
-        listId={dataset.id}
-        columns={columns}
-        initialRows={rows}
-        pageSize={PAGE_SIZE}
-      />
-    </div>
-  );
-
-  return (
-    <div className="space-y-8 bg-blue-200 overflow-hidden max-w-full">
+    <div>
       <ListDetailHeader
         listId={dataset.id}
         name={dataset.name}

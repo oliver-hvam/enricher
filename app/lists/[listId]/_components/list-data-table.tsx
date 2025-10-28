@@ -306,11 +306,11 @@ export function ListDataTable({
   const tableRows = table.getRowModel().rows;
 
   return (
-    <div className="space-y-4 bg-green-300 max-w-full w-full p-4 ">
+    <div className="space-y-4 max-w-full w-full">
       <DataTableToolbar table={table} />
       <div className="rounded-lg border">
-        <div ref={scrollAreaRef} className="h-[70vh] bg-purple-300 bg-red-400 overflow-x-auto overflow-y-auto" >
-          <Table className="bg-amber-200 p-3" style={{ tableLayout: "fixed" }}>
+        <div ref={scrollAreaRef} className="h-[70vh] overflow-x-auto overflow-y-auto" >
+          <Table style={{ tableLayout: "fixed" }}>
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
