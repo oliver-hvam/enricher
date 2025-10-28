@@ -18,7 +18,7 @@ export function ListDetailHeader({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
+        <h1 className="text-lg font-semibold tracking-tight">{name}</h1>
         <p className="text-sm text-muted-foreground">
           {rowCount} rows • {columnCount} columns • Updated {formatRelativeDate(updatedAt)}
         </p>

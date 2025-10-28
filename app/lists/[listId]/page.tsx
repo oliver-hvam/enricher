@@ -16,14 +16,15 @@ export default async function ListDetailPage({ params }: ListPageProps) {
 
   return (
     <div>
-      <ListDetailHeader
-        listId={dataset.id}
-        name={dataset.name}
-        rowCount={dataset.rowCount}
-        columnCount={dataset.columns.length}
-        updatedAt={dataset.updatedAt}
-      />
-      {/* ⬇ Client handles fetching rows */}
+      <div className="px-8 py-4">
+        <ListDetailHeader
+          listId={dataset.id}
+          name={dataset.name}
+          rowCount={dataset.rowCount}
+          columnCount={dataset.columns.length}
+          updatedAt={dataset.updatedAt}
+        />
+      </div>
       <ListDataTable
         listId={dataset.id}
         columns={dataset.columns.map((c) => ({ id: c.id, name: c.name }))}
