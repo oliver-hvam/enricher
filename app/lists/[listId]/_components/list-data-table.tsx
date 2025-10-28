@@ -373,7 +373,7 @@ export function ListDataTable({
                 tableRows.map((row, rowIndex) => {
                   const isLastRow = rowIndex === tableRows.length - 1;
                   return (
-                    <TableRow key={row.id} className="h-10">
+                    <TableRow key={row.id} className="h-8">
                       <TableCell
                         className="w-8 max-w-8 select-none text-center text-neutral-400"
                         style={{
