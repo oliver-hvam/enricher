@@ -23,7 +23,6 @@ import {
 import { DataTableToolbar } from "@/app/lists/[listId]/_components/data-table-toolbar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export interface ListDataRow {
   id: string;
@@ -235,14 +234,6 @@ export function ListDataTable({
       return;
     }
 
-    const viewport = scrollArea.querySelector<HTMLElement>(
-      "[data-radix-scroll-area-viewport]"
-    );
-
-    if (!viewport) {
-      return;
-    }
-
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
@@ -250,7 +241,7 @@ export function ListDataTable({
           void loadMore();
         }
       },
-      { root: viewport, rootMargin: "200px" }
+      { root: scrollArea, rootMargin: "200px" }
     );
 
     observer.observe(sentinelNode);
