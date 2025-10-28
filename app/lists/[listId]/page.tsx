@@ -15,7 +15,7 @@ export default async function ListDetailPage({ params }: ListPageProps) {
   if (!dataset) notFound();
 
   return (
-    <div className="space-y-8">
+    <div>
       <ListDetailHeader
         listId={dataset.id}
         name={dataset.name}

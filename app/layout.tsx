@@ -21,10 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(GeistSans.variable, GeistMono.variable)}>
       <body>
-        <div className="flex min-h-screen bg-background text-foreground">
-          <Sidebar />
-          <div className="flex flex-1 flex-col">
-            <header className="flex items-center justify-between border-b px-8 py-4">
+        <div className="flex min-h-screen w-screen bg-background text-foreground">
+          <Sidebar /> {/* should have a fixed width, e.g. w-64 */}
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <header className="flex items-center justify-between border-b px-8 py-4 shrink-0">
               <div className="flex flex-col">
                 <span className="text-lg font-semibold">Workspace</span>
                 <span className="text-sm text-muted-foreground">
@@ -38,7 +38,9 @@ export default function RootLayout({
                 View lists
               </Link>
             </header>
-            <main className="flex-1 overflow-y-auto px-8 py-8">{children}</main>
+            <main className="flex-1 overflow-y-auto overflow-x-hidden">
+              {children}
+            </main>
           </div>
         </div>
       </body>
