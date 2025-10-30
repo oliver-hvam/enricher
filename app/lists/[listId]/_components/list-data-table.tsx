@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 export interface ListDataRow {
   id: string;
   values: Record<string, string | null>;
-  position?: number;
 }
 
 export interface ListDataColumn {
@@ -43,6 +42,7 @@ interface ListDataTableProps {
 
 interface ListRowsResponse {
   rows: ListDataRow[];
+  nextCursor: string | null;
 }
 
 export function ListDataTable({
@@ -65,9 +65,7 @@ export function ListDataTable({
   >({});
 
   const hasMoreRef = React.useRef(false);
-  const lastPositionRef = React.useRef<number>(
-    -1
-  );
+  const cursorRef = React.useRef<string | null>(null);
   const isLoadingRef = React.useRef(false);
   const scrollAreaRef = React.useRef<HTMLDivElement | null>(null);
   const sentinelNodeRef = React.useRef<HTMLDivElement | null>(null);
@@ -137,14 +135,10 @@ export function ListDataTable({
   // Reset state when pageSize changes
   React.useEffect(() => {
     setRows([]);
-    lastPositionRef.current = -1;
+    cursorRef.current = null;
     hasMoreRef.current = true;
     setHasMore(true);
   }, [pageSize]);
-
-  React.useEffect(() => {
-    hasMoreRef.current = hasMore;
-  }, [hasMore]);
 
   React.useEffect(() => {
     return () => {
@@ -163,10 +157,7 @@ export function ListDataTable({
       isLoadingRef.current = true;
 
       try {
-        const cursorParam =
-          lastPositionRef.current >= 0
-            ? `cursor=${lastPositionRef.current}`
-            : "";
+        const cursorParam = cursorRef.current ? `cursor=${cursorRef.current}` : "";
         const sep = cursorParam ? "&" : "";
         const url = `/api/lists/${listId}/rows?${cursorParam}${sep}limit=${pageSize}`;
         const response = await fetch(url, { cache: "no-store" });
@@ -179,14 +170,14 @@ export function ListDataTable({
         const nextRows = Array.isArray(data.rows) ? data.rows : [];
 
         if (nextRows.length > 0) {
-          setRows((prev) => [...prev, ...nextRows]);
-          const nextMax = Math.max(
-            lastPositionRef.current,
-            ...nextRows.map((r) => r.position ?? -1)
-          );
-          lastPositionRef.current = nextMax;
+          setRows((prev) => {
+            const existingIds = new Set(prev.map((r) => r.id));
+            const newRows = nextRows.filter((r) => !existingIds.has(r.id));
+            return [...prev, ...newRows];
+          });
+          cursorRef.current = data.nextCursor;
 
-          if (nextRows.length < pageSize) {
+          if (!data.nextCursor || nextRows.length < pageSize) {
             hasMoreRef.current = false;
             setHasMore(false);
           }
@@ -312,14 +303,15 @@ export function ListDataTable({
   const tableRows = table.getRowModel().rows;
 
   return (
-    <div className="space-y-4 max-w-full w-full">
+<div className="space-y-4 max-w-full w-full flex flex-1 flex-col">
       <DataTableToolbar table={table} />
-      <div className={cn("border-t border-b", `rounded-${rounding}`)}>
+      <div className={cn("border-t border-b flex-1 flex-col flex", `rounded-${rounding}`)}>
         <div
           ref={scrollAreaRef}
-          className="h-[70vh] overflow-x-auto overflow-y-auto"
+          className="overflow-y-auto flex-1 min-h-0 bg-yellow-400 flex flex-col"
         >
-          <Table style={{ tableLayout: "fixed" }}>
+       <div className="h-[1700px] max-h-full bg-blue-200">Hey</div> 
+       {/*    <Table style={{ tableLayout: "fixed" }} className="max-h-full min-h-full">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -385,7 +377,7 @@ export function ListDataTable({
                   return (
                     <TableRow key={row.id} className="h-8">
                       <TableCell
-                        className="w-8 max-w-8 select-none text-center text-neutral-400"
+                        className="w-8 max-w-8 select-none text-center text-neutral-400 text-sm !p-0"
                         style={{
                           borderRight: "1px solid hsl(var(--border))",
                           borderBottom: isLastRow
@@ -458,10 +450,9 @@ export function ListDataTable({
                 </TableRow>
               )}
             </TableBody>
-          </Table>
-          <div ref={setSentinelNode} className="h-4 w-full" />
+          </Table>  */}
+{/*           <div ref={setSentinelNode} className="h-4 w-full" /> */}
         </div>
-        {/* Footer */}
         <div className="flex items-center justify-between px-4 h-[50px] border-t bg-muted/30 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <span>
