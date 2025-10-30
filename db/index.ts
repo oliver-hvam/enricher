@@ -1,7 +1,6 @@
-import { Pool } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
-
+import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "@/db/schema";
+import { Pool } from "pg";
 
 const connectionString = process.env.POSTGRES_URL;
 

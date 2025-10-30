@@ -1,13 +1,16 @@
+import { TransformationConfig } from "@/lib/types/transformation";
 import {
   index,
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   timestamp,
   unique,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm/relations";
 
 export const datasets = pgTable("datasets", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -20,7 +23,7 @@ export const datasets = pgTable("datasets", {
     .notNull(),
 });
 
-export const listColumns = pgTable(
+export const datasetColumns = pgTable(
   "dataset_columns",
   {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -56,3 +59,38 @@ export const datasetRows = pgTable(
   },
   (t) => [index("idx_dataset_rows_dataset_id").on(t.datasetId)]
 );
+
+export const transformations = pgTable("transformations", {
+  id: uuid("id").primaryKey(),
+  columnId: uuid("column_id")
+    .references(() => datasetColumns.id)
+    .notNull(),
+  config: jsonb("config").$type<TransformationConfig>().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const transformationDependencies = pgTable(
+  "transformation_dependencies",
+  {
+    transformationId: uuid("transformation_id")
+      .references(() => transformations.id)
+      .notNull(),
+    dependsOnColumnId: uuid("depends_on_column_id")
+      .references(() => datasetColumns.id)
+      .notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.transformationId, t.dependsOnColumnId] })]
+);
+
+// One-to-many relation: Transformation has many dependencies
+export const transformationRelations = relations(
+  transformations,
+  ({ many }) => ({
+    dependencies: many(transformationDependencies),
+  })
+);
+
+// One-to-many relation: Columns have many transformations
+export const datasetColumnRelations = relations(datasetColumns, ({ many }) => ({
+  transformations: many(transformations),
+}));

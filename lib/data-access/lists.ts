@@ -1,7 +1,8 @@
-import { desc, eq, inArray, sql, asc, gt, or, and } from "drizzle-orm";
+import "server-only";
 
+import { desc, eq, inArray, sql, asc, gt, and } from "drizzle-orm";
 import { db } from "@/db";
-import { datasetRows, datasets, listColumns } from "@/db/schema";
+import { datasetRows, datasets, datasetColumns } from "@/db/schema";
 import { randomUUID } from "crypto";
 
 export interface ParsedDataset {
@@ -26,9 +27,25 @@ export async function createDataset(name: string): Promise<string> {
   return id;
 }
 
+export async function getColumnById(columnId: string) {
+  const [column] = await db
+    .select({
+      id: datasetColumns.id,
+      datasetId: datasetColumns.dataset_id,
+      name: datasetColumns.name,
+      position: datasetColumns.position,
+      metadata: datasetColumns.metadata,
+      createdAt: datasetColumns.createdAt,
+    })
+    .from(datasetColumns)
+    .where(eq(datasetColumns.id, columnId));
+
+  return column;
+}
+
 export async function insertColumns(datasetId: string, header: string[]) {
   if (header.length === 0) return;
-  await db.insert(listColumns).values(
+  await db.insert(datasetColumns).values(
     header.map((name, i) => ({
       id: randomUUID(),
       dataset_id: datasetId,
@@ -67,12 +84,12 @@ export async function getAllDatasets() {
   const [columnCounts, rowCounts] = await Promise.all([
     db
       .select({
-        datasetId: listColumns.dataset_id,
+        datasetId: datasetColumns.dataset_id,
         count: sql<number>`count(*)::int`,
       })
-      .from(listColumns)
-      .where(inArray(listColumns.dataset_id, datasetIds))
-      .groupBy(listColumns.dataset_id),
+      .from(datasetColumns)
+      .where(inArray(datasetColumns.dataset_id, datasetIds))
+      .groupBy(datasetColumns.dataset_id),
     db
       .select({
         datasetId: datasetRows.datasetId,
@@ -111,15 +128,15 @@ export async function getDatasetById(datasetId: string) {
 
   const columns = await db
     .select({
-      id: listColumns.id,
-      name: listColumns.name,
-      position: listColumns.position,
-      metadata: listColumns.metadata,
-      createdAt: listColumns.createdAt,
+      id: datasetColumns.id,
+      name: datasetColumns.name,
+      position: datasetColumns.position,
+      metadata: datasetColumns.metadata,
+      createdAt: datasetColumns.createdAt,
     })
-    .from(listColumns)
-    .where(eq(listColumns.dataset_id, datasetId))
-    .orderBy(listColumns.position);
+    .from(datasetColumns)
+    .where(eq(datasetColumns.dataset_id, datasetId))
+    .orderBy(datasetColumns.position);
 
   return {
     id: dataset.id,
@@ -213,14 +230,14 @@ export async function getDatasetWithColumnsOnly(datasetId: string) {
   // Fetch column definitions
   const columns = await db
     .select({
-      id: listColumns.id,
-      name: listColumns.name,
-      position: listColumns.position,
-      metadata: listColumns.metadata,
+      id: datasetColumns.id,
+      name: datasetColumns.name,
+      position: datasetColumns.position,
+      metadata: datasetColumns.metadata,
     })
-    .from(listColumns)
-    .where(eq(listColumns.dataset_id, datasetId))
-    .orderBy(listColumns.position);
+    .from(datasetColumns)
+    .where(eq(datasetColumns.dataset_id, datasetId))
+    .orderBy(datasetColumns.position);
 
   // Return a clean object
   return {
@@ -262,14 +279,14 @@ export async function getListRows(
   // Fetch columns
   const columns = await db
     .select({
-      id: listColumns.id,
-      name: listColumns.name,
-      position: listColumns.position,
-      metadata: listColumns.metadata,
+      id: datasetColumns.id,
+      name: datasetColumns.name,
+      position: datasetColumns.position,
+      metadata: datasetColumns.metadata,
     })
-    .from(listColumns)
-    .where(eq(listColumns.dataset_id, listId))
-    .orderBy(listColumns.position);
+    .from(datasetColumns)
+    .where(eq(datasetColumns.dataset_id, listId))
+    .orderBy(datasetColumns.position);
 
   // Fetch rows (cursor pagination)
   const condition = cursor
@@ -298,4 +315,21 @@ export async function getListRows(
     rows,
     nextCursor,
   };
+}
+
+export async function getRowIds(
+  targetColumn: { datasetId: string; name: string },
+  includeNonNull = true
+) {
+  const rows = await db
+    .select({ id: datasetRows.id })
+    .from(datasetRows)
+    .where(
+      and(
+        eq(datasetRows.datasetId, targetColumn.datasetId),
+        includeNonNull ? sql`1=1` : sql`(row->>${targetColumn.name}) IS NULL`
+      )
+    );
+
+  return rows.map((r) => r.id);
 }
